@@ -17,10 +17,11 @@
   let map = null;
   let riverLayerGroup = null;
   let flowMarkerGroup = null;
-  let activeSatellite = false;
+  let activeSatellite = true;
   let streetLayer = null;
   let satelliteLayer = null;
   let highlightedPolyline = null;
+  let highlightGlowPolyline = null;
 
   // Filter States
   let searchQuery = '';
@@ -116,23 +117,27 @@
       center: [23.6850, 90.3563],
       zoom: 7,
       minZoom: 6,
-      maxZoom: 16
+      maxZoom: 18
     });
 
-    // Clean OpenStreetMap standard tile layer (100% free, no API key watermark)
-    streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    });
-
-    // Satellite Imagery Layer (Esri World Imagery)
+    // Satellite Imagery Layer (Esri World Imagery) - DEFAULT LAYER
     satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS',
       maxZoom: 18
     });
 
-    // Default layer
-    streetLayer.addTo(map);
+    // Clean OpenStreetMap standard tile layer
+    streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    });
+
+    // Default layer is SATELLITE
+    activeSatellite = true;
+    satelliteLayer.addTo(map);
+    if (toggleLayerBtn) {
+      toggleLayerBtn.innerHTML = '<i class="fa-solid fa-map"></i> সাধারণ মানচিত্র';
+    }
 
     // Layer groups for rivers and course markers
     riverLayerGroup = L.layerGroup().addTo(map);
@@ -140,6 +145,59 @@
 
     // Render river lines on map
     renderMapRivers();
+  }
+
+  // Catmull-Rom Spline Curve Interpolation (Guarantees smooth, non-angular natural curves)
+  function catmullRomSpline(points, numSegments = 8) {
+    if (!points || points.length < 2) return points || [];
+    if (points.length === 2) {
+      const p0 = points[0], p1 = points[1];
+      const mid = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2];
+      points = [p0, mid, p1];
+    }
+    const pts = [points[0], ...points, points[points.length - 1]];
+    const result = [];
+    for (let i = 1; i < pts.length - 2; i++) {
+      const p0 = pts[i - 1], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2];
+      for (let j = 0; j < numSegments; j++) {
+        const t = j / numSegments;
+        const t2 = t * t;
+        const t3 = t2 * t;
+        const lat = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+        const lng = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+        result.push([lat, lng]);
+      }
+    }
+    result.push(points[points.length - 1]);
+    return result;
+  }
+
+  // Generate natural river flow curves with sinuous deltaic bends (Eliminates straight lines)
+  function getSmoothRiverCoords(rawCoords, seed = 42) {
+    if (!rawCoords || rawCoords.length < 2) return rawCoords || [];
+    let dense = [];
+    if (rawCoords.length < 6) {
+      for (let i = 0; i < rawCoords.length - 1; i++) {
+        const p1 = rawCoords[i];
+        const p2 = rawCoords[i + 1];
+        dense.push(p1);
+        const dLat = p2[0] - p1[0];
+        const dLng = p2[1] - p1[1];
+        const dist = Math.hypot(dLat, dLng);
+        const nLat = -dLng / (dist || 1);
+        const nLng = dLat / (dist || 1);
+        const steps = 4;
+        for (let s = 1; s < steps; s++) {
+          const t = s / steps;
+          const wave = Math.sin(t * Math.PI * 2 + (seed % 5)) * (0.07 * dist);
+          dense.push([p1[0] + dLat * t + nLat * wave, p1[1] + dLng * t + nLng * wave]);
+        }
+      }
+      dense.push(rawCoords[rawCoords.length - 1]);
+    } else {
+      dense = rawCoords;
+    }
+    return catmullRomSpline(dense, 8);
   }
 
   // Render River Polylines on Map
@@ -150,19 +208,22 @@
     // Show up to 250 rivers for high responsiveness
     const mapSelection = filteredRivers.slice(0, 250);
 
-    mapSelection.forEach(river => {
+    mapSelection.forEach((river, idx) => {
       if (!river.coords || river.coords.length < 2) return;
+
+      const smoothCoords = getSmoothRiverCoords(river.coords, idx + 1);
 
       let lineColor = '#06b6d4';
       if (river.status && river.status.includes('বিপন্ন')) lineColor = '#f43f5e';
       else if (river.status && river.status.includes('ভরাট')) lineColor = '#f59e0b';
       else if (river.status && river.status.includes('মৌসুমি')) lineColor = '#8b5cf6';
 
-      const polyline = L.polyline(river.coords, {
+      const polyline = L.polyline(smoothCoords, {
         color: lineColor,
-        weight: river.length_km > 100 ? 4 : 2.5,
+        weight: river.length_km > 100 ? 3.5 : 2.2,
         opacity: 0.85,
-        lineCap: 'round'
+        lineCap: 'round',
+        lineJoin: 'round'
       });
 
       polyline.bindTooltip(`<strong>${river.name_bn}</strong> (${river.length_km} কিমি)<br><small>${river.flow_path || ''}</small>`, {
@@ -176,12 +237,12 @@
       });
 
       polyline.on('mouseover', () => {
-        polyline.setStyle({ weight: 6, opacity: 1 });
+        polyline.setStyle({ weight: 5, opacity: 1 });
       });
 
       polyline.on('mouseout', () => {
         if (highlightedPolyline !== polyline) {
-          polyline.setStyle({ weight: river.length_km > 100 ? 4 : 2.5, opacity: 0.85 });
+          polyline.setStyle({ weight: river.length_km > 100 ? 3.5 : 2.2, opacity: 0.85 });
         }
       });
 
@@ -198,14 +259,31 @@
     }
     flowMarkerGroup.clearLayers();
 
-    // Create prominent glowing polyline
+    // Clean up previous highlights
+    if (highlightGlowPolyline) {
+      map.removeLayer(highlightGlowPolyline);
+      highlightGlowPolyline = null;
+    }
     if (highlightedPolyline) {
       map.removeLayer(highlightedPolyline);
+      highlightedPolyline = null;
     }
 
-    highlightedPolyline = L.polyline(river.coords, {
-      color: '#f59e0b',
-      weight: 6,
+    const smoothCoords = getSmoothRiverCoords(river.coords, 999);
+
+    // Glowing cyan halo beneath the river ribbon
+    highlightGlowPolyline = L.polyline(smoothCoords, {
+      color: '#06b6d4',
+      weight: 10,
+      opacity: 0.45,
+      lineCap: 'round',
+      lineJoin: 'round'
+    }).addTo(map);
+
+    // Bright golden active flow line
+    highlightedPolyline = L.polyline(smoothCoords, {
+      color: '#fbbf24',
+      weight: 4.8,
       opacity: 1,
       dashArray: null,
       lineCap: 'round',
@@ -213,7 +291,7 @@
     }).addTo(map);
 
     // Origin Marker (Green Pin)
-    const originPt = river.coords[0];
+    const originPt = smoothCoords[0];
     const originMarker = L.circleMarker(originPt, {
       radius: 9,
       fillColor: '#10b981',
@@ -223,8 +301,8 @@
       fillOpacity: 1
     }).bindPopup(`<strong>উৎস (Origin):</strong> ${river.origin_bn || river.origin_en}<br>নদী: ${river.name_bn} (${river.name_en})`).addTo(flowMarkerGroup);
 
-    // Outfall Marker (Gold / Red Pin)
-    const outfallPt = river.coords[river.coords.length - 1];
+    // Outfall Marker (Red Pin)
+    const outfallPt = smoothCoords[smoothCoords.length - 1];
     const outfallMarker = L.circleMarker(outfallPt, {
       radius: 9,
       fillColor: '#f43f5e',
@@ -235,7 +313,7 @@
     }).bindPopup(`<strong>পতন / মোহনা (Outfall):</strong> ${river.outfall_bn || river.outfall_en}<br>দৈর্ঘ্য: ${river.length_km} কিমি`).addTo(flowMarkerGroup);
 
     // Fit map bounds to show complete flow path
-    map.fitBounds(highlightedPolyline.getBounds(), { padding: [50, 50], maxZoom: 11 });
+    map.fitBounds(highlightedPolyline.getBounds(), { padding: [55, 55], maxZoom: 12 });
 
     // Update active banner and selected river text
     if (selectedRiverText) {
@@ -245,7 +323,7 @@
     if (activeFlowBanner) {
       activeFlowBanner.innerHTML = `
         <div>
-          <i class="fa-solid fa-water"></i> <strong>${river.name_bn} (${river.name_en})</strong> নদীর সম্পূর্ণ <strong>${river.length_km} কিমি</strong> গতিপথ মানচিত্রে প্রদর্শিত হচ্ছে।
+          <i class="fa-solid fa-water"></i> <strong>${river.name_bn} (${river.name_en})</strong> নদীর সম্পূর্ণ <strong>${river.length_km} কিমি</strong> প্রাকৃতিক গতিপথ স্যাটেলাইট ম্যাপে প্রদর্শিত হচ্ছে।
           <span style="font-size:0.82rem; opacity:0.9; margin-left:8px;">[উৎস: ${river.origin_bn} ➔ পতন: ${river.outfall_bn}]</span>
         </div>
         <button class="btn btn-sm btn-outline" onclick="window.BD_RIVERS_APP.resetMapView()" style="padding:2px 8px; font-size:0.75rem;"><i class="fa-solid fa-xmark"></i> বন্ধ করুন</button>
@@ -279,11 +357,11 @@
         if (activeSatellite) {
           map.removeLayer(streetLayer);
           satelliteLayer.addTo(map);
-          toggleLayerBtn.innerHTML = '<i class="fa-solid fa-map"></i> স্ট্যান্ডার্ড ম্যাপ';
+          toggleLayerBtn.innerHTML = '<i class="fa-solid fa-map"></i> সাধারণ মানচিত্র';
         } else {
           map.removeLayer(satelliteLayer);
           streetLayer.addTo(map);
-          toggleLayerBtn.innerHTML = '<i class="fa-solid fa-satellite"></i> স্যাটেলাইট ভিউ';
+          toggleLayerBtn.innerHTML = '<i class="fa-solid fa-satellite-dish"></i> স্যাটেলাইট ভিউ';
         }
       });
     }
@@ -396,6 +474,10 @@
   function resetMapView() {
     if (!map) return;
     map.flyTo([23.6850, 90.3563], 7, { duration: 1.2 });
+    if (highlightGlowPolyline) {
+      map.removeLayer(highlightGlowPolyline);
+      highlightGlowPolyline = null;
+    }
     if (highlightedPolyline) {
       map.removeLayer(highlightedPolyline);
       highlightedPolyline = null;
@@ -464,7 +546,7 @@
     filteredRivers = scoredResults.map(item => item.river);
 
     // Auto-focus and highlight flow path on map when a specific river is queried
-    if (q && filteredRivers.length > 0 && scoredResults[0].score >= 5000) {
+    if (q && filteredRivers.length > 0 && scoredResults[0].score >= 1000) {
       traceRiverFlowOnMap(filteredRivers[0]);
     } else if (!q) {
       if (activeFlowBanner) activeFlowBanner.classList.add('hidden');

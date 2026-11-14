@@ -109,8 +109,8 @@
       </div>
 
       <nav class="header-nav">
+        <a href="#riversSection" class="nav-link"><i class="fa-solid fa-magnifying-glass"></i> নদী অনুসন্ধান</a>
         <a href="#mapSection" class="nav-link"><i class="fa-solid fa-map-location-dot"></i> স্যাটেলাইট ম্যাপ</a>
-        <a href="#riversSection" class="nav-link"><i class="fa-solid fa-bars-staggered"></i> নদী তালিকা</a>
         <a href="#bcsSection" class="nav-link"><i class="fa-solid fa-graduation-cap"></i> বিসিএস গাইড</a>
         <a href="#downloadSection" class="nav-link"><i class="fa-solid fa-download"></i> GeoJSON ডাম্প</a>
         <a href="#authorSection" class="nav-link highlight"><i class="fa-solid fa-user-astronaut"></i> স্থপতি</a>
@@ -159,39 +159,7 @@
   <!-- Main Container -->
   <main class="container main-content">
 
-    <!-- Interactive Map Section -->
-    <section id="mapSection" class="section-card map-card">
-      <div class="card-header">
-        <div class="card-title-group">
-          <span class="card-icon"><i class="fa-solid fa-map-location-dot"></i></span>
-          <div>
-            <h3 class="card-title">ইন্টারেক্টিভ নদী প্রবাহ ও মোহনা স্যাটেলাইট ভিউ</h3>
-            <p class="card-desc">মানচিত্রে জুম করে যেকোনো নদীর প্রবাহ রেখা দেখুন অথবা স্যাটেলাইট ভিউ চালু করে নদীর মোহনা ও চরাঞ্চল পর্যবেক্ষণ করুন।</p>
-          </div>
-        </div>
-
-        <div class="map-controls-group">
-          <button id="toggleLayerBtn" class="btn btn-sm btn-outline">
-            <i class="fa-solid fa-layer-group"></i> স্যাটেলাইট মোড
-          </button>
-          <button id="resetMapBtn" class="btn btn-sm btn-secondary">
-            <i class="fa-solid fa-compress"></i> বাংলাদেশ ভিউ
-          </button>
-        </div>
-      </div>
-
-      <!-- Map Container -->
-      <div id="activeFlowBanner" class="active-flow-banner hidden"></div>
-      <div class="map-wrapper">
-        <div id="riverMap" class="leaflet-map-box"></div>
-        <div class="map-overlay-info" id="mapOverlayInfo">
-          <span class="pulse-indicator"></span>
-          <span id="selectedRiverText">যেকোনো নদী নির্বাচন করুন</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Search & Filter Controls -->
+    <!-- Search & Filter Controls (Placed directly above the Satellite Map) -->
     <section id="riversSection" class="section-card filter-card">
       <div class="search-bar-row">
         <div class="search-input-wrapper">
@@ -253,6 +221,38 @@
           <button class="quick-filter-chip" data-filter="transboundary"><i class="fa-solid fa-flag"></i> অভিন্ন নদী (৫৭)</button>
           <button class="quick-filter-chip" data-filter="endangered"><i class="fa-solid fa-biohazard"></i> বিপন্ন ও দূষিত</button>
           <button class="quick-filter-chip" data-filter="top10"><i class="fa-solid fa-arrow-up-wide-short"></i> শীর্ষ দীর্ঘ নদী</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Satellite Map Section -->
+    <section id="mapSection" class="section-card map-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-satellite-dish"></i></span>
+          <div>
+            <h3 class="card-title">ইন্টারেক্টিভ নদী প্রবাহ ও মোহনা স্যাটেলাইট ভিউ</h3>
+            <p class="card-desc">সার্চ বক্সে যেকোনো নদী লিখে খুঁজুন — স্যাটেলাইট ম্যাপে নদীর সম্পূর্ণ প্রাকৃতিক গতিপথ ও মোহনা সরাসরি প্রদর্শিত হবে।</p>
+          </div>
+        </div>
+
+        <div class="map-controls-group">
+          <button id="toggleLayerBtn" class="btn btn-sm btn-outline">
+            <i class="fa-solid fa-map"></i> সাধারণ মানচিত্র
+          </button>
+          <button id="resetMapBtn" class="btn btn-sm btn-secondary">
+            <i class="fa-solid fa-compress"></i> বাংলাদেশ ভিউ
+          </button>
+        </div>
+      </div>
+
+      <!-- Map Container -->
+      <div id="activeFlowBanner" class="active-flow-banner hidden"></div>
+      <div class="map-wrapper">
+        <div id="riverMap" class="leaflet-map-box"></div>
+        <div class="map-overlay-info" id="mapOverlayInfo">
+          <span class="pulse-indicator"></span>
+          <span id="selectedRiverText">যেকোনো নদী নির্বাচন করুন</span>
         </div>
       </div>
     </section>
