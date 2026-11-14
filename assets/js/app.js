@@ -50,53 +50,57 @@
   const modalBody = document.getElementById('modalBody');
   const toast = document.getElementById('toast');
   const toastMessage = document.getElementById('toastMessage');
-  const themeToggle = document.getElementById('themeToggle');
 
   // Initialize
-  async function init() {
+  function init() {
     loadTheme();
     setupData();
     setupEventListeners();
     initMap();
     renderRivers();
     renderBCSQuestions();
+    updateCount();
   }
 
-  // Load Theme
+  // Load & Apply Theme
   function loadTheme() {
     const savedTheme = localStorage.getItem('bd_rivers_theme') || 'dark';
-    if (savedTheme === 'light') {
+    applyTheme(savedTheme);
+  }
+
+  function applyTheme(theme) {
+    if (theme === 'light') {
       document.documentElement.classList.remove('dark');
       document.documentElement.classList.add('light');
-      themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i>';
+      document.documentElement.setAttribute('data-theme', 'light');
+      updateThemeButtons('<i class="fa-solid fa-sun"></i>');
     } else {
       document.documentElement.classList.remove('light');
       document.documentElement.classList.add('dark');
-      themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i>';
+      document.documentElement.setAttribute('data-theme', 'dark');
+      updateThemeButtons('<i class="fa-solid fa-moon"></i>');
     }
+  }
+
+  function updateThemeButtons(html) {
+    const btn1 = document.getElementById('themeToggle');
+    const btn2 = document.getElementById('themeToggleBtn');
+    if (btn1) btn1.innerHTML = html;
+    if (btn2) btn2.innerHTML = html;
   }
 
   function toggleTheme() {
-    if (document.documentElement.classList.contains('light')) {
-      document.documentElement.classList.remove('light');
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('bd_rivers_theme', 'dark');
-      themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i>';
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.classList.add('light');
-      localStorage.setItem('bd_rivers_theme', 'light');
-      themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i>';
-    }
+    const isLight = document.documentElement.classList.contains('light');
+    const newTheme = isLight ? 'dark' : 'light';
+    localStorage.setItem('bd_rivers_theme', newTheme);
+    applyTheme(newTheme);
   }
 
   // Setup Data
   function setupData() {
-    if (window.BD_RIVERS_DATA && window.BD_RIVERS_DATA.length > 0) {
-      allRivers = window.BD_RIVERS_DATA;
-      bcsQuestions = window.BD_RIVERS_BCS_QA || [];
-      summaryData = window.BD_RIVERS_SUMMARY || {};
-    }
+    allRivers = window.BD_RIVERS_DATA || window.RIVERS_DATA || [];
+    bcsQuestions = window.BD_RIVERS_BCS_QA || window.BCS_QA || [];
+    summaryData = window.BD_RIVERS_SUMMARY || window.RIVERS_SUMMARY || {};
     filteredRivers = [...allRivers];
   }
 
@@ -112,16 +116,15 @@
       maxZoom: 16
     });
 
-    // Street / Carto Dark tile layer
-    streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-      subdomains: 'abcd',
+    // Clean OpenStreetMap standard tile layer (100% free, no API key watermark)
+    streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       maxZoom: 19
     });
 
-    // Satellite Imagery Layer (Esri)
+    // Satellite Imagery Layer (Esri World Imagery)
     satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS',
       maxZoom: 18
     });
 
@@ -140,16 +143,16 @@
     if (!map || !riverLayerGroup) return;
     riverLayerGroup.clearLayers();
 
-    // Limit initial map paths to top 150 rivers for crisp 60fps performance
-    const mapSelection = filteredRivers.slice(0, 150);
+    // Show top 200 rivers on the map for high performance
+    const mapSelection = filteredRivers.slice(0, 200);
 
     mapSelection.forEach(river => {
       if (!river.coords || river.coords.length < 2) return;
 
       let lineColor = '#06b6d4';
-      if (river.status === 'দখল ও দূষণে বিপন্ন') lineColor = '#f43f5e';
-      else if (river.status === 'নাব্যতাহীন ও ভরাট') lineColor = '#f59e0b';
-      else if (river.status === 'মৌসুমি') lineColor = '#8b5cf6';
+      if (river.status && river.status.includes('বিপন্ন')) lineColor = '#f43f5e';
+      else if (river.status && river.status.includes('ভরাট')) lineColor = '#f59e0b';
+      else if (river.status && river.status.includes('মৌসুমি')) lineColor = '#8b5cf6';
 
       const polyline = L.polyline(river.coords, {
         color: lineColor,
@@ -189,89 +192,109 @@
     }
     highlightedPolyline = polyline;
     if (polyline) {
-      polyline.setStyle({ weight: 7, color: '#38bdf8', opacity: 1 });
-      map.fitBounds(polyline.getBounds(), { padding: [50, 50], maxZoom: 11 });
-    } else if (river.coords && river.coords.length > 0) {
-      map.setView(river.coords[0], 10);
+      polyline.setStyle({ weight: 6, color: '#f59e0b', opacity: 1 });
+      polyline.bringToFront();
     }
-    selectedRiverText.textContent = `${river.name_bn} (${river.length_km} কিমি &bull; ${river.basin})`;
+    if (selectedRiverText) {
+      selectedRiverText.innerHTML = `নির্বাচিত নদী: <strong>${river.name_bn}</strong> (${river.name_en}) - দৈর্ঘ্য: ${river.length_km} কিমি`;
+    }
   }
 
   // Event Listeners
   function setupEventListeners() {
-    themeToggle.addEventListener('click', toggleTheme);
+    // Theme toggle (both IDs supported)
+    const btn1 = document.getElementById('themeToggle');
+    const btn2 = document.getElementById('themeToggleBtn');
+    if (btn1) btn1.addEventListener('click', toggleTheme);
+    if (btn2) btn2.addEventListener('click', toggleTheme);
 
-    // Map satellite toggle
-    toggleLayerBtn.addEventListener('click', () => {
-      activeSatellite = !activeSatellite;
-      if (activeSatellite) {
-        map.removeLayer(streetLayer);
-        satelliteLayer.addTo(map);
-        toggleLayerBtn.innerHTML = '<i class="fa-solid fa-map"></i> সাধারণ মানচিত্র';
-      } else {
-        map.removeLayer(satelliteLayer);
-        streetLayer.addTo(map);
-        toggleLayerBtn.innerHTML = '<i class="fa-solid fa-layer-group"></i> স্যাটেলাইট মোড';
-      }
-    });
+    // Map Basemap Toggle
+    if (toggleLayerBtn) {
+      toggleLayerBtn.addEventListener('click', () => {
+        if (!map) return;
+        activeSatellite = !activeSatellite;
+        if (activeSatellite) {
+          map.removeLayer(streetLayer);
+          satelliteLayer.addTo(map);
+          toggleLayerBtn.innerHTML = '<i class="fa-solid fa-map"></i> স্ট্যান্ডার্ড ম্যাপ';
+        } else {
+          map.removeLayer(satelliteLayer);
+          streetLayer.addTo(map);
+          toggleLayerBtn.innerHTML = '<i class="fa-solid fa-satellite"></i> স্যাটেলাইট ভিউ';
+        }
+      });
+    }
 
-    // Reset map view
-    resetMapBtn.addEventListener('click', () => {
-      map.setView([23.6850, 90.3563], 7);
-      selectedRiverText.textContent = 'বাংলাদেশ সামগ্রিক ভিউ';
-    });
+    // Reset Map View
+    if (resetMapBtn) {
+      resetMapBtn.addEventListener('click', () => {
+        if (!map) return;
+        map.flyTo([23.6850, 90.3563], 7, { duration: 1.2 });
+        if (highlightedPolyline) {
+          highlightedPolyline.setStyle({ weight: 3, opacity: 0.85 });
+          highlightedPolyline = null;
+        }
+        if (selectedRiverText) {
+          selectedRiverText.innerHTML = 'মানচিত্রে নদীর ওপর ক্লিক করে বিস্তারিত দেখুন';
+        }
+      });
+    }
 
-    // Search input
-    riverSearchInput.addEventListener('input', (e) => {
-      searchQuery = e.target.value.trim().toLowerCase();
-      clearSearchBtn.classList.toggle('hidden', searchQuery.length === 0);
-      applyFilters();
-    });
+    // Search Input with Debounce
+    let searchTimeout;
+    if (riverSearchInput) {
+      riverSearchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const val = e.target.value.trim();
+        if (clearSearchBtn) clearSearchBtn.classList.toggle('hidden', val.length === 0);
 
-    clearSearchBtn.addEventListener('click', () => {
-      riverSearchInput.value = '';
-      searchQuery = '';
-      clearSearchBtn.classList.add('hidden');
-      applyFilters();
-    });
+        searchTimeout = setTimeout(() => {
+          searchQuery = val.toLowerCase();
+          applyFilters();
+        }, 150);
+      });
+    }
 
-    // Dropdown filters
-    filterBasin.addEventListener('change', (e) => {
-      selectedBasin = e.target.value;
-      applyFilters();
-    });
+    // Clear Search Button
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => {
+        if (riverSearchInput) riverSearchInput.value = '';
+        clearSearchBtn.classList.add('hidden');
+        searchQuery = '';
+        applyFilters();
+        if (riverSearchInput) riverSearchInput.focus();
+      });
+    }
 
-    filterDivision.addEventListener('change', (e) => {
-      selectedDivision = e.target.value;
-      applyFilters();
-    });
+    // Dropdown Filters
+    if (filterBasin) filterBasin.addEventListener('change', (e) => { selectedBasin = e.target.value; applyFilters(); });
+    if (filterDivision) filterDivision.addEventListener('change', (e) => { selectedDivision = e.target.value; applyFilters(); });
+    if (filterTransboundary) filterTransboundary.addEventListener('change', (e) => { selectedTransboundary = e.target.value; applyFilters(); });
+    if (filterStatus) filterStatus.addEventListener('change', (e) => { selectedStatus = e.target.value; applyFilters(); });
 
-    filterTransboundary.addEventListener('change', (e) => {
-      selectedTransboundary = e.target.value;
-      applyFilters();
-    });
+    // Reset Filters Button
+    if (resetFiltersBtn) resetFiltersBtn.addEventListener('click', resetAllFilters);
 
-    filterStatus.addEventListener('change', (e) => {
-      selectedStatus = e.target.value;
-      applyFilters();
-    });
-
-    resetFiltersBtn.addEventListener('click', resetAllFilters);
-
-    // Quick filter chips
+    // Quick Filter Chips
     document.querySelectorAll('.quick-filter-chip').forEach(chip => {
       chip.addEventListener('click', () => {
-        const type = chip.getAttribute('data-filter');
         document.querySelectorAll('.quick-filter-chip').forEach(c => c.classList.remove('active'));
         chip.classList.add('active');
 
-        if (type === 'transboundary') {
-          filterTransboundary.value = 'yes';
+        const type = chip.getAttribute('data-filter');
+        if (type === 'all') {
+          resetAllFilters();
+          return;
+        } else if (type === 'transboundary') {
+          resetAllFilters();
           selectedTransboundary = 'yes';
+          if (filterTransboundary) filterTransboundary.value = 'yes';
         } else if (type === 'endangered') {
-          filterStatus.value = 'দখল ও দূষণে বিপন্ন';
+          resetAllFilters();
           selectedStatus = 'দখল ও দূষণে বিপন্ন';
+          if (filterStatus) filterStatus.value = 'দখল ও দূষণে বিপন্ন';
         } else if (type === 'top10') {
+          resetAllFilters();
           filteredRivers = [...allRivers].sort((a, b) => b.length_km - a.length_km).slice(0, 15);
           renderRivers();
           renderMapRivers();
@@ -283,21 +306,25 @@
     });
 
     // BCS Search
-    bcsSearchInput.addEventListener('input', (e) => {
-      const q = e.target.value.trim().toLowerCase();
-      document.querySelectorAll('.bcs-item').forEach(item => {
-        const text = item.textContent.toLowerCase();
-        item.style.display = text.includes(q) ? 'block' : 'none';
+    if (bcsSearchInput) {
+      bcsSearchInput.addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        document.querySelectorAll('.bcs-item').forEach(item => {
+          const text = item.textContent.toLowerCase();
+          item.style.display = text.includes(q) ? 'block' : 'none';
+        });
       });
-    });
+    }
 
     // Modal close
-    modalCloseBtn.addEventListener('click', closeRiverModal);
-    riverModal.addEventListener('click', (e) => {
-      if (e.target === riverModal) closeRiverModal();
-    });
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeRiverModal);
+    if (riverModal) {
+      riverModal.addEventListener('click', (e) => {
+        if (e.target === riverModal) closeRiverModal();
+      });
+    }
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !riverModal.classList.contains('hidden')) {
+      if (e.key === 'Escape' && riverModal && !riverModal.classList.contains('hidden')) {
         closeRiverModal();
       }
     });
@@ -306,7 +333,7 @@
     document.querySelectorAll('.copy-link-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const fullUrl = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/' + btn.getAttribute('data-url');
-        navigator.clipboard.writeText(fullUrl);
+        copyTextFallback(fullUrl);
         showToast('ডাউনলোড লিংক কপি হয়েছে!');
       });
     });
@@ -316,21 +343,24 @@
   function applyFilters() {
     filteredRivers = allRivers.filter(r => {
       if (selectedBasin !== 'all' && r.basin !== selectedBasin) return false;
-      if (selectedDivision !== 'all' && !r.divisions.includes(selectedDivision)) return false;
+      if (selectedDivision !== 'all' && (!r.divisions || !r.divisions.includes(selectedDivision))) return false;
       if (selectedTransboundary === 'yes' && !r.transboundary) return false;
       if (selectedTransboundary === 'no' && r.transboundary) return false;
       if (selectedStatus !== 'all' && r.status !== selectedStatus) return false;
 
       if (searchQuery) {
-        const q = searchQuery;
-        const matchNameBn = r.name_bn.toLowerCase().includes(q);
-        const matchNameEn = r.name_en.toLowerCase().includes(q);
-        const matchOrigin = r.origin_bn.toLowerCase().includes(q);
-        const matchFlow = r.flow_path.toLowerCase().includes(q);
-        const matchDist = r.districts.some(d => d.toLowerCase().includes(q));
-        const matchBasin = r.basin.toLowerCase().includes(q);
+        const q = searchQuery.toLowerCase();
+        const matchNameBn = r.name_bn && r.name_bn.toLowerCase().includes(q);
+        const matchNameEn = r.name_en && r.name_en.toLowerCase().includes(q);
+        const matchOriginBn = r.origin_bn && r.origin_bn.toLowerCase().includes(q);
+        const matchOriginEn = r.origin_en && r.origin_en.toLowerCase().includes(q);
+        const matchOutfall = (r.outfall_bn && r.outfall_bn.toLowerCase().includes(q)) || (r.outfall_en && r.outfall_en.toLowerCase().includes(q));
+        const matchFlow = r.flow_path && r.flow_path.toLowerCase().includes(q);
+        const matchDist = r.districts && r.districts.some(d => d.toLowerCase().includes(q));
+        const matchBasin = r.basin && r.basin.toLowerCase().includes(q);
+        const matchHistory = r.historical_bcs_significance && r.historical_bcs_significance.toLowerCase().includes(q);
 
-        if (!matchNameBn && !matchNameEn && !matchOrigin && !matchFlow && !matchDist && !matchBasin) {
+        if (!matchNameBn && !matchNameEn && !matchOriginBn && !matchOriginEn && !matchOutfall && !matchFlow && !matchDist && !matchBasin && !matchHistory) {
           return false;
         }
       }
@@ -350,36 +380,39 @@
     selectedTransboundary = 'all';
     selectedStatus = 'all';
 
-    riverSearchInput.value = '';
-    clearSearchBtn.classList.add('hidden');
-    filterBasin.value = 'all';
-    filterDivision.value = 'all';
-    filterTransboundary.value = 'all';
-    filterStatus.value = 'all';
+    if (riverSearchInput) riverSearchInput.value = '';
+    if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+    if (filterBasin) filterBasin.value = 'all';
+    if (filterDivision) filterDivision.value = 'all';
+    if (filterTransboundary) filterTransboundary.value = 'all';
+    if (filterStatus) filterStatus.value = 'all';
     document.querySelectorAll('.quick-filter-chip').forEach(c => c.classList.remove('active'));
 
     applyFilters();
   }
 
   function updateCount() {
-    riverCountText.innerHTML = `প্রদর্শিত হচ্ছে: <strong>${filteredRivers.length}</strong> টি নদ-নদী (সর্বমোট: ${allRivers.length})`;
-    noResultsState.classList.toggle('hidden', filteredRivers.length > 0);
-    riversGrid.classList.toggle('hidden', filteredRivers.length === 0);
+    if (riverCountText) {
+      riverCountText.innerHTML = `প্রদর্শিত হচ্ছে: <strong>${filteredRivers.length}</strong> টি নদ-নদী (সর্বমোট: ${allRivers.length})`;
+    }
+    if (noResultsState) noResultsState.classList.toggle('hidden', filteredRivers.length > 0);
+    if (riversGrid) riversGrid.classList.toggle('hidden', filteredRivers.length === 0);
   }
 
   // Render Rivers Grid
   function renderRivers() {
+    if (!riversGrid) return;
     riversGrid.innerHTML = '';
     const fragment = document.createDocumentFragment();
 
     filteredRivers.slice(0, 120).forEach(r => {
       const card = document.createElement('div');
       card.className = 'river-card';
-      const statusClass = `status-${r.status.replace(/\s+/g, '-')}`;
+      const statusClass = `status-${(r.status || '').replace(/\s+/g, '-')}`;
 
       card.innerHTML = `
         <div class="river-card-header">
-          <h4 class="river-name">${r.name_bn} <small style="font-size:0.75rem; color:var(--text-muted);">(${r.name_en})</small></h4>
+          <h4 class="river-name">${r.name_bn} <small style="font-size:0.75rem; color:var(--text-muted);">(${r.name_en || ''})</small></h4>
           <span class="river-id">${r.id}</span>
         </div>
 
@@ -392,17 +425,33 @@
           <strong>অববাহিকা:</strong> ${r.basin}
         </div>
         <div class="river-info-row">
-          <strong>উৎপত্তি:</strong> ${r.origin_bn}
+          <strong>উৎপত্তি:</strong> ${r.origin_bn || r.origin_en}
         </div>
         <div class="river-info-row">
-          <strong>পতন/মোহনা:</strong> ${r.outfall_bn}
+          <strong>পতন/মোহনা:</strong> ${r.outfall_bn || r.outfall_en}
         </div>
 
         ${r.transboundary ? `<div class="transboundary-tag"><i class="fa-solid fa-earth-americas"></i> অভিন্ন নদী (${r.transboundary_country})</div>` : ''}
+
+        <div class="river-card-actions">
+          <button class="btn btn-sm btn-outline focus-river-btn" data-id="${r.id}"><i class="fa-solid fa-crosshairs"></i> ম্যাপে দেখুন</button>
+          <button class="btn btn-sm btn-primary view-details-btn" data-id="${r.id}"><i class="fa-solid fa-circle-info"></i> বিস্তারিত</button>
+        </div>
       `;
 
+      // Focus river on map button
+      card.querySelector('.focus-river-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        focusRiverOnMap(r);
+      });
+
+      // View details button & card click
+      card.querySelector('.view-details-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openRiverModal(r);
+      });
+
       card.addEventListener('click', () => {
-        highlightRiver(r, null);
         openRiverModal(r);
       });
 
@@ -412,109 +461,103 @@
     riversGrid.appendChild(fragment);
   }
 
-  // Open River Detail Modal
+  // Focus river on map
+  function focusRiverOnMap(river) {
+    if (!map || !river.coords || river.coords.length === 0) return;
+    document.getElementById('mapSection').scrollIntoView({ behavior: 'smooth' });
+    map.flyTo(river.coords[0], 9, { duration: 1.5 });
+    if (selectedRiverText) {
+      selectedRiverText.innerHTML = `ম্যাপে ফোকাস করা হয়েছে: <strong>${river.name_bn}</strong> (${river.length_km} কিমি)`;
+    }
+  }
+
+  // Open River Details Modal
   function openRiverModal(r) {
-    const statusClass = `status-${r.status.replace(/\s+/g, '-')}`;
+    if (!riverModal || !modalBody) return;
 
     modalBody.innerHTML = `
-      <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px;">
-        <span class="status-badge ${statusClass}" style="float: right;">${r.status}</span>
-        <h3 style="font-size: 1.5rem; font-weight: 800;">${r.name_bn} <small style="font-size: 0.9rem; color: var(--text-muted);">(${r.name_en})</small></h3>
-        <p style="color: var(--text-secondary); font-size: 0.9rem;">${r.basin} &bull; ${r.length_km} কিমি &bull; ${r.id}</p>
+      <div class="modal-header-section">
+        <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--accent-cyan);">${r.name_bn} (${r.name_en})</h3>
+        <span class="status-badge status-${(r.status || '').replace(/\s+/g, '-')}">${r.status}</span>
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 20px;">
-        <div style="background: var(--bg-input); padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-          <div style="font-size: 0.75rem; color: var(--text-muted);">উৎপত্তি স্থল</div>
-          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.92rem;">${r.origin_bn}</div>
+      <div class="modal-details-grid">
+        <div class="detail-box">
+          <label>নদীর পরিচিতি আইডি</label>
+          <div><code>${r.id}</code></div>
         </div>
-
-        <div style="background: var(--bg-input); padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-          <div style="font-size: 0.75rem; color: var(--text-muted);">পতন / মোহনা</div>
-          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.92rem;">${r.outfall_bn}</div>
+        <div class="detail-box">
+          <label>মোট দৈর্ঘ্য</label>
+          <div>${r.length_km} কিমি</div>
         </div>
-
-        <div style="background: var(--bg-input); padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-          <div style="font-size: 0.75rem; color: var(--text-muted);">প্রবাহ সংশ্লিষ্ট জেলাসমূহ</div>
-          <div style="font-weight: 600; color: var(--text-primary); font-size: 0.92rem;">${r.districts.join(', ')}</div>
+        <div class="detail-box">
+          <label>প্রধান অববাহিকা</label>
+          <div>${r.basin}</div>
         </div>
-
-        <div style="background: var(--bg-input); padding: 12px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-          <div style="font-size: 0.75rem; color: var(--text-muted);">আন্তর্জাতিক সীমানা স্থিতি</div>
-          <div style="font-weight: 600; color: #06b6d4; font-size: 0.92rem;">${r.transboundary ? `অভিন্ন নদী (${r.transboundary_country})` : 'অভ্যন্তরীণ নদী (Indigenous)'}</div>
+        <div class="detail-box">
+          <label>অভিন্ন নদী স্ট্যাটাস</label>
+          <div>${r.transboundary ? `হ্যাঁ (${r.transboundary_country} সীমান্ত)` : 'না (অভ্যন্তরীণ নদী)'}</div>
         </div>
-      </div>
-
-      <div style="background: rgba(245, 158, 11, 0.08); border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-bottom: 20px;">
-        <h4 style="font-size: 0.95rem; font-weight: 700; color: #fbbf24; margin-bottom: 6px;"><i class="fa-solid fa-graduation-cap"></i> বিসিএস ও ঐতিহাসিক তথ্য কণিকা:</h4>
-        <p style="font-size: 0.9rem; color: var(--text-primary); line-height: 1.6;">${r.historical_bcs_significance || r.description}</p>
-      </div>
-
-      <div style="background: var(--bg-input); padding: 14px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 22px;">
-        <h5 style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">প্রবাহ পথ বিস্তারিত:</h5>
-        <p style="font-size: 0.9rem; color: var(--text-secondary);">${r.flow_path}</p>
-      </div>
-
-      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-        <button class="btn btn-primary btn-sm modal-zoom-map-btn">
-          <i class="fa-solid fa-crosshairs"></i> মানচিত্রে জুম করুন
-        </button>
-        <button class="btn btn-secondary btn-sm modal-copy-data-btn">
-          <i class="fa-solid fa-copy"></i> তথ্য কপি করুন
-        </button>
+        <div class="detail-box full-width">
+          <label>উৎপত্তি স্থল</label>
+          <div>${r.origin_bn || r.origin_en}</div>
+        </div>
+        <div class="detail-box full-width">
+          <label>প্রবাহ পথ ও জেলাসমূহ</label>
+          <div>${r.flow_path} (${(r.districts || []).join(', ')})</div>
+        </div>
+        <div class="detail-box full-width">
+          <label>পতন / মোহনা</label>
+          <div>${r.outfall_bn || r.outfall_en}</div>
+        </div>
+        <div class="detail-box full-width bcs-highlight-box">
+          <label><i class="fa-solid fa-graduation-cap"></i> বিসিএস ও সাধারণ জ্ঞান তথ্য</label>
+          <div>${r.historical_bcs_significance}</div>
+        </div>
       </div>
     `;
-
-    modalBody.querySelector('.modal-zoom-map-btn').addEventListener('click', () => {
-      closeRiverModal();
-      highlightRiver(r, null);
-      document.getElementById('mapSection').scrollIntoView({ behavior: 'smooth' });
-    });
-
-    modalBody.querySelector('.modal-copy-data-btn').addEventListener('click', () => {
-      navigator.clipboard.writeText(JSON.stringify(r, null, 2));
-      showToast('নদীর বিস্তারিত JSON কপি হয়েছে!');
-    });
 
     riverModal.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
   }
 
   function closeRiverModal() {
+    if (!riverModal) return;
     riverModal.classList.add('hidden');
     document.body.style.overflow = '';
   }
 
   // Render BCS Q&A Accordion
   function renderBCSQuestions() {
+    if (!bcsAccordion) return;
     bcsAccordion.innerHTML = '';
     const fragment = document.createDocumentFragment();
 
-    bcsQuestions.forEach((item, idx) => {
+    bcsQuestions.forEach((q, idx) => {
       const bcsItem = document.createElement('div');
       bcsItem.className = 'bcs-item';
 
       bcsItem.innerHTML = `
         <div class="bcs-header">
-          <div style="display: flex; align-items: center;">
-            <span class="bcs-cat-badge">${item.category}</span>
-            <span class="bcs-q-text">${idx + 1}. ${item.question}</span>
+          <div class="bcs-title">
+            <span class="bcs-q-num">Q${idx + 1}</span>
+            <span>${q.question || q.question_bn}</span>
           </div>
-          <i class="fa-solid fa-chevron-down" style="color: var(--text-muted); transition: transform 0.2s;"></i>
+          <i class="fa-solid fa-chevron-down bcs-chevron"></i>
         </div>
         <div class="bcs-body">
-          <div class="bcs-answer-box">
-            উত্তর: ${item.answer}
+          <div class="bcs-ans">
+            <strong>উত্তর:</strong> ${q.answer || q.answer_bn}
           </div>
-          <div class="bcs-explanation">
-            <strong>ব্যাখ্যা:</strong> ${item.explanation}
+          <div class="bcs-exp">
+            <strong>ব্যাখ্যা:</strong> ${q.explanation || q.explanation_bn}
           </div>
         </div>
       `;
 
       const header = bcsItem.querySelector('.bcs-header');
       const body = bcsItem.querySelector('.bcs-body');
-      const chevron = bcsItem.querySelector('.fa-chevron-down');
+      const chevron = bcsItem.querySelector('.bcs-chevron');
 
       header.addEventListener('click', () => {
         const isOpen = body.classList.contains('open');
@@ -528,9 +571,30 @@
     bcsAccordion.appendChild(fragment);
   }
 
+  // Fallback Copy Function
+  function copyTextFallback(text) {
+    let copied = false;
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      copied = document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (e) {}
+
+    if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
+  }
+
   // Toast Notification
   let toastTimeout;
   function showToast(msg) {
+    if (!toast || !toastMessage) return;
     clearTimeout(toastTimeout);
     toastMessage.textContent = msg;
     toast.classList.remove('hidden');
@@ -538,6 +602,15 @@
       toast.classList.add('hidden');
     }, 2800);
   }
+
+  // Expose global helpers
+  window.BD_RIVERS_APP = {
+    allRivers: () => allRivers,
+    search: (q) => {
+      searchQuery = q.toLowerCase();
+      applyFilters();
+    }
+  };
 
   // DOM ready
   if (document.readyState === 'loading') {
