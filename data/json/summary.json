@@ -1,0 +1,31 @@
+{
+  "project": "Bangladesh-Rivers-Geo-Vault",
+  "author": {
+    "name": "Mohammad Golamrabbii",
+    "name_bn": "মোহাম্মদ গোলাম রাব্বী",
+    "title": "Tech & Media Entrepreneur | Geospatial Archivist & Civic Tech Innovator",
+    "portfolio": "https://linktr.ee/golamrabbii",
+    "github": "https://github.com/mohammadgolamrabbii",
+    "email": "emarketor2025@gmail.com"
+  },
+  "total_rivers": 725,
+  "transboundary_rivers": 49,
+  "bcs_qa_count": 30,
+  "basin_distribution": {
+    "পদ্মা-গঙ্গা অববাহিকা": 292,
+    "সুরমা-মেঘনা অববাহিকা": 49,
+    "ব্রহ্মপুত্র-যমুনা অববাহিকা": 43,
+    "তিস্তা ও উত্তরাঞ্চলীয় অববাহিকা": 112,
+    "কর্ণফুলী ও দক্ষিণ-পূর্ব পার্বত্য অববাহিকা": 95,
+    "উপকূলীয় ও সুন্দরবন অববাহিকা": 134
+  },
+  "status_distribution": {
+    "প্রবাহিত ও সক্রিয়": 213,
+    "নাব্যতাহীন ও ভরাট": 179,
+    "দখল ও দূষণে বিপন্ন": 178,
+    "মৌসুমি": 155
+  },
+  "transboundary_count": 57,
+  "transboundary_india": 54,
+  "transboundary_myanmar": 3
+}

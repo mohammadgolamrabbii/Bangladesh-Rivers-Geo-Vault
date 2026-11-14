@@ -1,0 +1,45 @@
+{
+  "name": "bangladesh-rivers-geo-vault",
+  "version": "1.0.0",
+  "description": "Comprehensive open-source geospatial directory of 725+ rivers in Bangladesh, 57 transboundary rivers, basin classifications, interactive satellite maps, GeoJSON, and BCS exam guide.",
+  "main": "sdk/node/index.js",
+  "bin": {
+    "bangladesh-rivers": "sdk/node/cli.js",
+    "rivers-vault": "sdk/node/cli.js"
+  },
+  "scripts": {
+    "test": "node tests/test_rivers.js",
+    "cli": "node sdk/node/cli.js",
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "bangladesh-rivers",
+    "geojson",
+    "bcs-preparation",
+    "transboundary-rivers",
+    "gis",
+    "leaflet",
+    "open-data",
+    "padma",
+    "meghna",
+    "jamuna",
+    "teesta",
+    "halda",
+    "karnafuli",
+    "mohammad-golamrabbii"
+  ],
+  "author": {
+    "name": "Mohammad Golamrabbii",
+    "email": "emarketor2025@gmail.com",
+    "url": "https://linktr.ee/golamrabbii"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mohammadgolamrabbii/Bangladesh-Rivers-Geo-Vault.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mohammadgolamrabbii/Bangladesh-Rivers-Geo-Vault/issues"
+  },
+  "homepage": "https://mohammadgolamrabbii.github.io/Bangladesh-Rivers-Geo-Vault/",
+  "license": "MIT"
+}

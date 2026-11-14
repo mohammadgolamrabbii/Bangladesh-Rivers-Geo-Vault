@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="bn" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bangladesh-Rivers-Geo-Vault | ৭২৫+ নদ-নদী ও মোহনার জিও-ম্যাপ ডিরেক্টরি</title>
+  
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="Bangladesh-Rivers-Geo-Vault | ৭২৫+ নদ-নদী ও মোহনার জিও-ম্যাপ ডিরেক্টরি">
+  <meta name="description" content="বাংলাদেশের ৭২৫+ নদ-নদী, উৎপত্তি, প্রবাহপথ, মোহনা, বর্তমান অবস্থা ও বিসিএস পরীক্ষার প্রশ্নোত্তর গাইড। সম্পূর্ণ ওপেন GeoJSON ও স্যাটেলাইট ম্যাপ। স্থপতি: মোহাম্মদ গোলাম রাব্বী (Mohammad Golamrabbii)।">
+  <meta name="keywords" content="Bangladesh Rivers, নদীর তালিকা, অভিন্ন নদী, পদ্মা, মেঘনা, যমুনা, তিস্তা, কর্ণফুলী, হালদা, নদী রক্ষা কমিশন, GeoJSON, BCS Preparation, বিসিএস নদ-নদী, Mohammad Golamrabbii, মোহাম্মদ গোলাম রাব্বী">
+  <meta name="author" content="Mohammad Golamrabbii (মোহাম্মদ গোলাম রাব্বী)">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://mohammadgolamrabbii.github.io/Bangladesh-Rivers-Geo-Vault/">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mohammadgolamrabbii.github.io/Bangladesh-Rivers-Geo-Vault/">
+  <meta property="og:title" content="Bangladesh-Rivers-Geo-Vault | ৭২৫+ নদ-নদী ও মোহনার জিও-ম্যাপ ডিরেক্টরি">
+  <meta property="og:description" content="বাংলাদেশের ৭২৫টি নদ-নদী ও মোহনার স্যাটেলাইট জিও-ম্যাপ, ওপেন GeoJSON এবং বিসিএস সাধারণ জ্ঞান গাইড।">
+  <meta property="og:image" content="https://mohammadgolamrabbii.github.io/Bangladesh-Rivers-Geo-Vault/assets/img/profile.jpg">
+
+  <!-- Twitter Card -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://mohammadgolamrabbii.github.io/Bangladesh-Rivers-Geo-Vault/">
+  <meta property="twitter:title" content="Bangladesh-Rivers-Geo-Vault | ৭২৫+ নদ-নদী ও মোহনার জিও-ম্যাপ ডিরেক্টরি">
+  <meta property="twitter:description" content="ওপেন-সোর্স বাংলাদেশ রিভার ভল্ট, স্যাটেলাইট ম্যাপ ও বিসিএস স্টাডি গাইড। উদ্ভাবক: মোহাম্মদ গোলাম রাব্বী।">
+  <meta property="twitter:image" content="https://mohammadgolamrabbii.github.io/Bangladesh-Rivers-Geo-Vault/assets/img/profile.jpg">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  
+  <!-- Font & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Schema.org Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://mohammadgolamrabbii.github.io/Bangladesh-Rivers-Geo-Vault/#website",
+        "url": "https://mohammadgolamrabbii.github.io/Bangladesh-Rivers-Geo-Vault/",
+        "name": "Bangladesh-Rivers-Geo-Vault",
+        "description": "Geospatial database and interactive satellite directory of 725+ rivers and estuaries in Bangladesh.",
+        "inLanguage": ["bn-BD", "en-US"],
+        "author": {
+          "@type": "Person",
+          "name": "Mohammad Golamrabbii",
+          "alternateName": "মোহাম্মদ গোলাম রাব্বী",
+          "url": "https://linktr.ee/golamrabbii",
+          "sameAs": [
+            "https://github.com/mohammadgolamrabbii",
+            "https://linkedin.com/in/golamrabbii"
+          ]
+        }
+      },
+      {
+        "@type": "Dataset",
+        "@id": "https://mohammadgolamrabbii.github.io/Bangladesh-Rivers-Geo-Vault/#dataset",
+        "name": "Bangladesh 725+ Rivers Hydrological and Geospatial Dataset",
+        "description": "Comprehensive open-source dataset of 725+ rivers in Bangladesh with origin, length, coordinates, estuaries, health status, and transboundary relations.",
+        "creator": {
+          "@type": "Person",
+          "name": "Mohammad Golamrabbii",
+          "jobTitle": "Tech & Media Entrepreneur | Geospatial Archivist"
+        },
+        "license": "https://opensource.org/licenses/MIT",
+        "distribution": [
+          {
+            "@type": "DataDownload",
+            "encodingFormat": "application/geo+json",
+            "contentUrl": "https://raw.githubusercontent.com/mohammadgolamrabbii/Bangladesh-Rivers-Geo-Vault/main/data/geojson/rivers.geojson"
+          },
+          {
+            "@type": "DataDownload",
+            "encodingFormat": "application/json",
+            "contentUrl": "https://raw.githubusercontent.com/mohammadgolamrabbii/Bangladesh-Rivers-Geo-Vault/main/data/json/rivers.json"
+          },
+          {
+            "@type": "DataDownload",
+            "encodingFormat": "text/csv",
+            "contentUrl": "https://raw.githubusercontent.com/mohammadgolamrabbii/Bangladesh-Rivers-Geo-Vault/main/data/csv/rivers.csv"
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <div class="brand-logo">
+          <i class="fa-solid fa-water"></i>
+          <span class="logo-pulse"></span>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">Bangladesh-Rivers-Geo-Vault</h1>
+          <span class="brand-sub">৭২৫+ নদ-নদী ও মোহনার জিও-ম্যাপ ডিরেক্টরি</span>
+        </div>
+      </div>
+
+      <nav class="header-nav">
+        <a href="#mapSection" class="nav-link"><i class="fa-solid fa-map-location-dot"></i> স্যাটেলাইট ম্যাপ</a>
+        <a href="#riversSection" class="nav-link"><i class="fa-solid fa-bars-staggered"></i> নদী তালিকা</a>
+        <a href="#bcsSection" class="nav-link"><i class="fa-solid fa-graduation-cap"></i> বিসিএস গাইড</a>
+        <a href="#downloadSection" class="nav-link"><i class="fa-solid fa-download"></i> GeoJSON ডাম্প</a>
+        <a href="#authorSection" class="nav-link highlight"><i class="fa-solid fa-user-astronaut"></i> স্থপতি</a>
+        <button id="themeToggle" class="theme-btn" title="ডার্ক/লাইট থিম পরিবর্তন"><i class="fa-solid fa-moon"></i></button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="container hero-inner">
+      <div class="hero-badge">
+        <i class="fa-solid fa-satellite-dish"></i>
+        <span>বাংলাদেশের সর্ববৃহৎ ওপেন-সোর্স জিওস্প্যাশিয়াল রিভার আর্কাইভ</span>
+      </div>
+
+      <h2 class="hero-heading">
+        বাংলাদেশের <span class="text-gradient">৭২৫টি নদ-নদী ও মোহনার</span> লাইভ স্যাটেলাইট ম্যাপ ও বিসিএস গাইড
+      </h2>
+
+      <p class="hero-lead">
+        নদীমাতৃক বাংলাদেশের প্রতিটি নদীর উৎপত্তি (হিমালয়, আসাম, তিব্বত, ত্রিপুরা, লুসাই পাহাড়), দৈর্ঘ্য, প্রবাহপথ, মোহনা ও বর্তমান স্বাস্থ্য পরিস্থিতি (প্রবাহিত নাকি দখল/দূষণে মৃত)—বিসিএস পরীক্ষার্থী, গবেষক ও পরিবেশবিদদের জন্য তৈরি প্রথম ইন্টারেক্টিভ ওপেন-সোর্স প্ল্যাটফর্ম।
+      </p>
+
+      <div class="hero-meta-row">
+        <div class="meta-pill"><i class="fa-solid fa-water"></i> <strong>৭২৫+</strong> নদ-নদী নথিবদ্ধ</div>
+        <div class="meta-pill"><i class="fa-solid fa-earth-americas"></i> <strong>৫৭টি</strong> আন্তর্জাতিক অভিন্ন নদী</div>
+        <div class="meta-pill"><i class="fa-solid fa-map"></i> সম্পূর্ণ <strong>GeoJSON</strong> ভেক্টর ডেটা</div>
+        <div class="meta-pill"><i class="fa-solid fa-award"></i> <strong>বিসিএস ও সরকারি চাকরি</strong> স্পেশাল গাইড</div>
+      </div>
+
+      <div class="hero-actions">
+        <a href="#mapSection" class="btn btn-primary btn-lg">
+          <i class="fa-solid fa-map-location-dot"></i> স্যাটেলাইট ম্যাপে দেখুন
+        </a>
+        <a href="#bcsSection" class="btn btn-secondary btn-lg">
+          <i class="fa-solid fa-graduation-cap"></i> বিসিএস রিভার গাইড
+        </a>
+        <a href="#downloadSection" class="btn btn-outline btn-lg">
+          <i class="fa-solid fa-download"></i> GeoJSON / CSV ডাউনলোড
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Container -->
+  <main class="container main-content">
+
+    <!-- Interactive Map Section -->
+    <section id="mapSection" class="section-card map-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-map-location-dot"></i></span>
+          <div>
+            <h3 class="card-title">ইন্টারেক্টিভ নদী প্রবাহ ও মোহনা স্যাটেলাইট ভিউ</h3>
+            <p class="card-desc">মানচিত্রে জুম করে যেকোনো নদীর প্রবাহ রেখা দেখুন অথবা স্যাটেলাইট ভিউ চালু করে নদীর মোহনা ও চরাঞ্চল পর্যবেক্ষণ করুন।</p>
+          </div>
+        </div>
+
+        <div class="map-controls-group">
+          <button id="toggleLayerBtn" class="btn btn-sm btn-outline">
+            <i class="fa-solid fa-layer-group"></i> স্যাটেলাইট মোড
+          </button>
+          <button id="resetMapBtn" class="btn btn-sm btn-secondary">
+            <i class="fa-solid fa-compress"></i> বাংলাদেশ ভিউ
+          </button>
+        </div>
+      </div>
+
+      <!-- Map Container -->
+      <div class="map-wrapper">
+        <div id="riverMap" class="leaflet-map-box"></div>
+        <div class="map-overlay-info" id="mapOverlayInfo">
+          <span class="pulse-indicator"></span>
+          <span id="selectedRiverText">যেকোনো নদী নির্বাচন করুন</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search & Filter Controls -->
+    <section id="riversSection" class="section-card filter-card">
+      <div class="search-bar-row">
+        <div class="search-input-wrapper">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="riverSearchInput" class="search-input" placeholder="নদীর নাম, উৎপত্তি, জেলা বা অববাহিকা খুঁজুন (যেমন: পদ্মা, হালদা, তিস্তা, কুড়িগ্রাম, গঙ্গোত্রী)..." autocomplete="off">
+          <button id="clearSearchBtn" class="clear-search-btn hidden" title="সার্চ মুছুন"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="quick-filters-row">
+          <select id="filterBasin" class="filter-select">
+            <option value="all">সকল অববাহিকা (৬টি)</option>
+            <option value="পদ্মা-গঙ্গা অববাহিকা">পদ্মা-গঙ্গা অববাহিকা</option>
+            <option value="সুরমা-মেঘনা অববাহিকা">সুরমা-মেঘনা অববাহিকা</option>
+            <option value="ব্রহ্মপুত্র-যমুনা অববাহিকা">ব্রহ্মপুত্র-যমুনা অববাহিকা</option>
+            <option value="তিস্তা ও উত্তরাঞ্চলীয় অববাহিকা">তিস্তা ও উত্তরাঞ্চলীয় অববাহিকা</option>
+            <option value="কর্ণফুলী ও দক্ষিণ-পূর্ব পার্বত্য অববাহিকা">কর্ণফুলী ও পার্বত্য অববাহিকা</option>
+            <option value="উপকূলীয় ও সুন্দরবন অববাহিকা">উপকূলীয় ও সুন্দরবন অববাহিকা</option>
+          </select>
+
+          <select id="filterDivision" class="filter-select">
+            <option value="all">সকল বিভাগ (৮টি)</option>
+            <option value="ঢাকা">ঢাকা বিভাগ</option>
+            <option value="চট্টগ্রাম">চট্টগ্রাম বিভাগ</option>
+            <option value="রাজশাহী">রাজশাহী বিভাগ</option>
+            <option value="খুলনা">খুলনা বিভাগ</option>
+            <option value="বরিশাল">বরিশাল বিভাগ</option>
+            <option value="সিলেট">সিলেট বিভাগ</option>
+            <option value="রংপুর">রংপুর বিভাগ</option>
+            <option value="ময়মনসিংহ">ময়মনসিংহ বিভাগ</option>
+          </select>
+
+          <select id="filterTransboundary" class="filter-select">
+            <option value="all">সকল নদী (অভিন্ন ও অভ্যন্তরীণ)</option>
+            <option value="yes">আন্তর্জাতিক / অভিন্ন নদী (Transboundary)</option>
+            <option value="no">অভ্যন্তরীণ নদী (Indigenous)</option>
+          </select>
+
+          <select id="filterStatus" class="filter-select">
+            <option value="all">সকল বর্তমান অবস্থা</option>
+            <option value="প্রবাহিত ও সক্রিয়">প্রবাহিত ও সক্রিয়</option>
+            <option value="নাব্যতাহীন ও ভরাট">নাব্যতাহীন ও ভরাট</option>
+            <option value="দখল ও দূষণে বিপন্ন">দখল ও দূষণে বিপন্ন</option>
+            <option value="মৌসুমি">মৌসুমি নদী</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Result Count & Quick Badges -->
+      <div class="filter-status-bar">
+        <span class="count-text" id="riverCountText">প্রদর্শিত হচ্ছে: <strong>৭২৫</strong> টি নদ-নদী</span>
+        <div class="quick-pill-filters">
+          <button class="quick-filter-chip" data-filter="transboundary"><i class="fa-solid fa-flag"></i> অভিন্ন নদী (৫৭)</button>
+          <button class="quick-filter-chip" data-filter="endangered"><i class="fa-solid fa-biohazard"></i> বিপন্ন ও দূষিত</button>
+          <button class="quick-filter-chip" data-filter="top10"><i class="fa-solid fa-arrow-up-wide-short"></i> শীর্ষ দীর্ঘ নদী</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rivers Grid -->
+    <section class="rivers-grid-container">
+      <div id="riversGrid" class="rivers-grid">
+        <!-- Rendered dynamically via app.js -->
+      </div>
+
+      <div id="noResultsState" class="no-results-box hidden">
+        <i class="fa-solid fa-compass-drafting empty-icon"></i>
+        <h3>কোনো নদ-নদী পাওয়া যায়নি</h3>
+        <p>আপনার অনুসন্ধানের সাথে মিলছে এমন কোনো নদীর তথ্য নেই। অন্য কোনো নাম বা ফিল্টার নির্বাচন করুন।</p>
+        <button id="resetFiltersBtn" class="btn btn-outline btn-sm">ফিল্টার রিসেট করুন</button>
+      </div>
+    </section>
+
+    <!-- BCS Exam Q&A Guide Section -->
+    <section id="bcsSection" class="section-card bcs-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon bcs-icon"><i class="fa-solid fa-graduation-cap"></i></span>
+          <div>
+            <h3 class="card-title">বিসিএস ও সরকারি চাকরির প্রস্তুতি: বাংলাদেশের নদ-নদী মাস্টার গাইড</h3>
+            <p class="card-desc">বিসিএস প্রিলিমিনারি, লিখিত, নন-ক্যাডার ও বিশ্ববিদ্যালয় ভর্তি পরীক্ষায় নদ-নদী সম্পর্কিত বহুল জিজ্ঞাসিত ৩০+ প্রশ্নোত্তর ও তথ্য কণিকা।</p>
+          </div>
+        </div>
+
+        <div class="bcs-search-wrapper">
+          <input type="text" id="bcsSearchInput" class="bcs-search-input" placeholder="বিসিএস প্রশ্নোত্তর খুঁজুন (যেমন: দীর্ঘতম, তিস্তা, হালদা, ফারাক্কা)...">
+        </div>
+      </div>
+
+      <div class="bcs-accordion" id="bcsAccordion">
+        <!-- Rendered dynamically via app.js -->
+      </div>
+    </section>
+
+    <!-- Dataset Download Section -->
+    <section id="downloadSection" class="section-card download-card">
+      <div class="card-header">
+        <div class="card-title-group">
+          <span class="card-icon"><i class="fa-solid fa-database"></i></span>
+          <div>
+            <h3 class="card-title">ওপেন-সোর্স GeoJSON, JSON ও CSV ডেটাসেট ডাউনলোড</h3>
+            <p class="card-desc">GIS গবেষক, ভূগোলবিদ ও সফটওয়্যার ডেভেলপারদের জন্য সম্পূর্ণ ওপেন ডেটা যা QGIS, ArcGIS, Mapbox বা যেকোনো অ্যাপে ব্যবহারযোগ্য।</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="download-grid">
+        <div class="download-item-card">
+          <div class="download-icon-box geojson-icon"><i class="fa-solid fa-map-location"></i></div>
+          <div class="download-content">
+            <h4>সম্পূর্ণ GeoJSON ভেক্টর ডেটা</h4>
+            <p>সকল নদীর ভৌগোলিক স্থানাঙ্ক (LineString), বৈশিষ্ট্য ও মোহনার পয়েন্ট।</p>
+            <div class="download-actions">
+              <a href="data/geojson/rivers.geojson" download="bangladesh-rivers.geojson" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-download"></i> rivers.geojson
+              </a>
+              <button class="btn btn-sm btn-outline copy-link-btn" data-url="data/geojson/rivers.geojson">
+                <i class="fa-solid fa-copy"></i> লিংক
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="download-item-card">
+          <div class="download-icon-box json-icon"><i class="fa-solid fa-file-code"></i></div>
+          <div class="download-content">
+            <h4>সম্পূর্ণ JSON ডেটাসেট (৭২৫ নদী)</h4>
+            <p>নদীর উৎপত্তি, দৈর্ঘ্য, প্রবাহপথ, মোহনা, জেলা ও বিসিএস তথ্য কণিকা।</p>
+            <div class="download-actions">
+              <a href="data/json/rivers.json" download="bangladesh-rivers.json" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-download"></i> rivers.json
+              </a>
+              <button class="btn btn-sm btn-outline copy-link-btn" data-url="data/json/rivers.json">
+                <i class="fa-solid fa-copy"></i> লিংক
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="download-item-card">
+          <div class="download-icon-box csv-icon"><i class="fa-solid fa-file-csv"></i></div>
+          <div class="download-content">
+            <h4>স্প্রেডশীট CSV ফাইল (Excel / Sheets)</h4>
+            <p>গবেষণা, ফিল্টারিং ও স্প্রেডশীটে দ্রুত বিশ্লেষণের জন্য প্রস্তুত।</p>
+            <div class="download-actions">
+              <a href="data/csv/rivers.csv" download="bangladesh-rivers.csv" class="btn btn-sm btn-primary">
+                <i class="fa-solid fa-download"></i> rivers.csv
+              </a>
+              <button class="btn btn-sm btn-outline copy-link-btn" data-url="data/csv/rivers.csv">
+                <i class="fa-solid fa-copy"></i> লিংক
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Author Profile Spotlight (SEO Priority) -->
+    <section id="authorSection" class="section-card author-card">
+      <div class="author-badge-top">
+        <i class="fa-solid fa-award"></i> প্রজেক্ট স্থপতি ও উদ্ভাবক
+      </div>
+
+      <div class="author-inner">
+        <div class="author-avatar-wrap">
+          <img src="assets/img/profile.jpg" alt="Mohammad Golamrabbii (মোহাম্মদ গোলাম রাব্বী)" class="author-avatar-img">
+          <div class="author-status-ring"></div>
+        </div>
+
+        <div class="author-details">
+          <h3 class="author-name">
+            Mohammad Golamrabbii <span class="author-name-bn">(মোহাম্মদ গোলাম রাব্বী)</span>
+          </h3>
+          <p class="author-title">Tech & Media Entrepreneur | Geospatial Archivist & Civic Tech Innovator</p>
+
+          <p class="author-bio">
+            বাংলাদেশের পানিসম্পদ সংরক্ষণ, নদীমাতৃক ঐতিহ্যের ডিজিটাল ম্যাপিং এবং তরুণ চাকরিপ্রার্থীদের জন্য উন্মুক্ত শিক্ষামূলক ডেটাসেট তৈরিতে নিবেদিতপ্রাণ। নদী রক্ষা, পরিবেশ আন্দোলন ও ভৌগোলিক গবেষণাকে সহজতর করতে বাংলাদেশের ৭২৫টি নদ-নদীকে এই ওপেন-সোর্স জিও-ভল্টে সুসংহত করা হয়েছে।
+          </p>
+
+          <div class="author-links">
+            <a href="https://linktr.ee/golamrabbii" target="_blank" rel="noopener noreferrer" class="social-btn linktree">
+              <i class="fa-solid fa-link"></i> পোর্টফোলিও (Linktree)
+            </a>
+            <a href="https://github.com/mohammadgolamrabbii" target="_blank" rel="noopener noreferrer" class="social-btn github">
+              <i class="fa-brands fa-github"></i> GitHub (@mohammadgolamrabbii)
+            </a>
+            <a href="https://linkedin.com/in/golamrabbii" target="_blank" rel="noopener noreferrer" class="social-btn linkedin">
+              <i class="fa-brands fa-linkedin"></i> LinkedIn
+            </a>
+            <a href="mailto:emarketor2025@gmail.com" class="social-btn email">
+              <i class="fa-solid fa-envelope"></i> ইমেইল
+            </a>
+            <a href="https://wa.me/8801923721637" target="_blank" rel="noopener noreferrer" class="social-btn whatsapp">
+              <i class="fa-brands fa-whatsapp"></i> হোয়াটসঅ্যাপ
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ecosystem Grid -->
+      <div class="ecosystem-box">
+        <h4 class="ecosystem-title"><i class="fa-solid fa-cubes"></i> গোলাম রাব্বীর অন্যান্য ডিজিটাল ইকোসিস্টেম প্রজেক্টসমূহ:</h4>
+        <div class="ecosystem-grid">
+          <a href="https://mohammadgolamrabbii.github.io/Bangla-BRTA-Plate-Decoder/" target="_blank" class="ecosystem-card">
+            <span class="eco-icon">🚗</span>
+            <div class="eco-info">
+              <h5>Bangla-BRTA-Plate-Decoder</h5>
+              <p>বিআরটিএ গাড়ির নাম্বার প্লেট ডিকোডার ও ভেরিফায়ার</p>
+            </div>
+          </a>
+          <a href="https://mohammadgolamrabbii.github.io/Bangladesh-Geo-Postcode-Vault/" target="_blank" class="ecosystem-card">
+            <span class="eco-icon">🌍</span>
+            <div class="eco-info">
+              <h5>Bangladesh-Geo-Postcode-Vault</h5>
+              <p>বাংলাদেশের ৫৩৯+ উপজেলা ও পোস্টকোড জিও-ভল্ট</p>
+            </div>
+          </a>
+          <a href="https://mohammadgolamrabbii.github.io/Bangla-Ligature-Matrix/" target="_blank" class="ecosystem-card">
+            <span class="eco-icon">🔤</span>
+            <div class="eco-info">
+              <h5>Bangla-Ligature-Matrix</h5>
+              <p>বাংলা ৪২৯+ যুক্তবর্ণ এনসাইক্লোপিডিয়া ও ফন্ট টেস্টার</p>
+            </div>
+          </a>
+          <a href="https://mohammadgolamrabbii.github.io/Bangla-Idioms-Proverbs-Vault/" target="_blank" class="ecosystem-card">
+            <span class="eco-icon">📖</span>
+            <div class="eco-info">
+              <h5>Bangla-Idioms-Proverbs-Vault</h5>
+              <p>বাংলা বাগধারা, প্রবাদ-প্রবচন ও সমার্থক শব্দের ভাণ্ডার</p>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- River Detail Modal -->
+  <div id="riverModal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal-container">
+      <button id="modalCloseBtn" class="modal-close-btn" aria-label="Close Modal"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body" id="modalBody">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden">
+    <i class="fa-solid fa-circle-check"></i>
+    <span id="toastMessage">কপি করা হয়েছে!</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <h4>Bangladesh-Rivers-Geo-Vault</h4>
+          <p>বাংলাদেশের ৭২৫+ নদ-নদী, অববাহিকা ও মোহনার উন্মুক্ত স্যাটেলাইট মানচিত্র ডিরেক্টরি। নদী রক্ষা ও পরিবেশ সংরক্ষণের জন্য নিবেদিত।</p>
+        </div>
+        <div class="footer-meta">
+          <p>পরিকল্পনা ও রূপায়ণ: <strong><a href="https://linktr.ee/golamrabbii" target="_blank" rel="noopener">মোহাম্মদ গোলাম রাব্বী (Mohammad Golamrabbii)</a></strong></p>
+          <p>লাইসেন্স: MIT License &bull; মুক্ত ও উন্মুক্ত ব্যবহারের জন্য প্রকাশিত।</p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Bangladesh-Rivers-Geo-Vault. Developed with pride for Bangladesh.</p>
+        <div class="footer-links">
+          <a href="https://github.com/mohammadgolamrabbii/Bangladesh-Rivers-Geo-Vault" target="_blank"><i class="fa-brands fa-github"></i> GitHub Repository</a>
+          <a href="#mapSection"><i class="fa-solid fa-arrow-up"></i> শীর্ষে যান</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Data & Application Scripts -->
+  <script src="assets/js/rivers-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
