@@ -181,6 +181,7 @@
       </div>
 
       <!-- Map Container -->
+      <div id="activeFlowBanner" class="active-flow-banner hidden"></div>
       <div class="map-wrapper">
         <div id="riverMap" class="leaflet-map-box"></div>
         <div class="map-overlay-info" id="mapOverlayInfo">
@@ -195,8 +196,15 @@
       <div class="search-bar-row">
         <div class="search-input-wrapper">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input type="text" id="riverSearchInput" class="search-input" placeholder="নদীর নাম, উৎপত্তি, জেলা বা অববাহিকা খুঁজুন (যেমন: পদ্মা, হালদা, তিস্তা, কুড়িগ্রাম, গঙ্গোত্রী)..." autocomplete="off">
+          <input type="text" id="riverSearchInput" class="search-input" placeholder="নদীর নাম লিখুন বাংলায় বা ইংরেজিতে (যেমন: balu, turag, padma, হালদা, সুরমা)..." autocomplete="off">
           <button id="clearSearchBtn" class="clear-search-btn hidden" title="সার্চ মুছুন"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="search-options-row">
+          <label class="strict-search-label">
+            <input type="checkbox" id="strictNameToggle" checked>
+            <span><i class="fa-solid fa-bullseye"></i> শুধুমাত্র নদীর নামে অনুসন্ধান (Strict River Name Match — যেমন 'balu' লিখলে শুধু বালু নদী আসবে)</span>
+          </label>
         </div>
 
         <div class="quick-filters-row">

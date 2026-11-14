@@ -16,6 +16,7 @@
   // Leaflet Map State
   let map = null;
   let riverLayerGroup = null;
+  let flowMarkerGroup = null;
   let activeSatellite = false;
   let streetLayer = null;
   let satelliteLayer = null;
@@ -33,8 +34,10 @@
   const toggleLayerBtn = document.getElementById('toggleLayerBtn');
   const resetMapBtn = document.getElementById('resetMapBtn');
   const selectedRiverText = document.getElementById('selectedRiverText');
+  const activeFlowBanner = document.getElementById('activeFlowBanner');
   const riverSearchInput = document.getElementById('riverSearchInput');
   const clearSearchBtn = document.getElementById('clearSearchBtn');
+  const strictNameToggle = document.getElementById('strictNameToggle');
   const filterBasin = document.getElementById('filterBasin');
   const filterDivision = document.getElementById('filterDivision');
   const filterTransboundary = document.getElementById('filterTransboundary');
@@ -131,8 +134,9 @@
     // Default layer
     streetLayer.addTo(map);
 
-    // Layer group for rivers
+    // Layer groups for rivers and course markers
     riverLayerGroup = L.layerGroup().addTo(map);
+    flowMarkerGroup = L.layerGroup().addTo(map);
 
     // Render river lines on map
     renderMapRivers();
@@ -143,8 +147,8 @@
     if (!map || !riverLayerGroup) return;
     riverLayerGroup.clearLayers();
 
-    // Show top 200 rivers on the map for high performance
-    const mapSelection = filteredRivers.slice(0, 200);
+    // Show up to 250 rivers for high responsiveness
+    const mapSelection = filteredRivers.slice(0, 250);
 
     mapSelection.forEach(river => {
       if (!river.coords || river.coords.length < 2) return;
@@ -161,7 +165,7 @@
         lineCap: 'round'
       });
 
-      polyline.bindTooltip(`<strong>${river.name_bn}</strong> (${river.length_km} কিমি)`, {
+      polyline.bindTooltip(`<strong>${river.name_bn}</strong> (${river.length_km} কিমি)<br><small>${river.flow_path || ''}</small>`, {
         sticky: true,
         className: 'custom-map-tooltip'
       });
@@ -185,28 +189,87 @@
     });
   }
 
-  // Highlight river on map
-  function highlightRiver(river, polyline) {
+  // Highlight and trace complete river flow path on map
+  function traceRiverFlowOnMap(river) {
+    if (!map || !river.coords || river.coords.length === 0) return;
+
+    if (!flowMarkerGroup) {
+      flowMarkerGroup = L.layerGroup().addTo(map);
+    }
+    flowMarkerGroup.clearLayers();
+
+    // Create prominent glowing polyline
     if (highlightedPolyline) {
-      highlightedPolyline.setStyle({ weight: 3, opacity: 0.85 });
+      map.removeLayer(highlightedPolyline);
     }
-    highlightedPolyline = polyline;
-    if (polyline) {
-      polyline.setStyle({ weight: 6, color: '#f59e0b', opacity: 1 });
-      polyline.bringToFront();
-    }
+
+    highlightedPolyline = L.polyline(river.coords, {
+      color: '#f59e0b',
+      weight: 6,
+      opacity: 1,
+      dashArray: null,
+      lineCap: 'round',
+      lineJoin: 'round'
+    }).addTo(map);
+
+    // Origin Marker (Green Pin)
+    const originPt = river.coords[0];
+    const originMarker = L.circleMarker(originPt, {
+      radius: 9,
+      fillColor: '#10b981',
+      color: '#ffffff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 1
+    }).bindPopup(`<strong>উৎস (Origin):</strong> ${river.origin_bn || river.origin_en}<br>নদী: ${river.name_bn} (${river.name_en})`).addTo(flowMarkerGroup);
+
+    // Outfall Marker (Gold / Red Pin)
+    const outfallPt = river.coords[river.coords.length - 1];
+    const outfallMarker = L.circleMarker(outfallPt, {
+      radius: 9,
+      fillColor: '#f43f5e',
+      color: '#ffffff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 1
+    }).bindPopup(`<strong>পতন / মোহনা (Outfall):</strong> ${river.outfall_bn || river.outfall_en}<br>দৈর্ঘ্য: ${river.length_km} কিমি`).addTo(flowMarkerGroup);
+
+    // Fit map bounds to show complete flow path
+    map.fitBounds(highlightedPolyline.getBounds(), { padding: [50, 50], maxZoom: 11 });
+
+    // Update active banner and selected river text
     if (selectedRiverText) {
-      selectedRiverText.innerHTML = `নির্বাচিত নদী: <strong>${river.name_bn}</strong> (${river.name_en}) - দৈর্ঘ্য: ${river.length_km} কিমি`;
+      selectedRiverText.innerHTML = `গতিপথ ফোকাস: <strong>${river.name_bn} (${river.name_en})</strong> | দৈর্ঘ্য: ${river.length_km} কিমি | অববাহিকা: ${river.basin}`;
     }
+
+    if (activeFlowBanner) {
+      activeFlowBanner.innerHTML = `
+        <div>
+          <i class="fa-solid fa-water"></i> <strong>${river.name_bn} (${river.name_en})</strong> নদীর সম্পূর্ণ <strong>${river.length_km} কিমি</strong> গতিপথ মানচিত্রে প্রদর্শিত হচ্ছে।
+          <span style="font-size:0.82rem; opacity:0.9; margin-left:8px;">[উৎস: ${river.origin_bn} ➔ পতন: ${river.outfall_bn}]</span>
+        </div>
+        <button class="btn btn-sm btn-outline" onclick="window.BD_RIVERS_APP.resetMapView()" style="padding:2px 8px; font-size:0.75rem;"><i class="fa-solid fa-xmark"></i> বন্ধ করুন</button>
+      `;
+      activeFlowBanner.classList.remove('hidden');
+    }
+  }
+
+  function highlightRiver(river, polyline) {
+    traceRiverFlowOnMap(river);
   }
 
   // Event Listeners
   function setupEventListeners() {
-    // Theme toggle (both IDs supported)
+    // Theme toggle
     const btn1 = document.getElementById('themeToggle');
     const btn2 = document.getElementById('themeToggleBtn');
     if (btn1) btn1.addEventListener('click', toggleTheme);
     if (btn2) btn2.addEventListener('click', toggleTheme);
+
+    // Strict name match toggle
+    if (strictNameToggle) {
+      strictNameToggle.addEventListener('change', applyFilters);
+    }
 
     // Map Basemap Toggle
     if (toggleLayerBtn) {
@@ -227,17 +290,7 @@
 
     // Reset Map View
     if (resetMapBtn) {
-      resetMapBtn.addEventListener('click', () => {
-        if (!map) return;
-        map.flyTo([23.6850, 90.3563], 7, { duration: 1.2 });
-        if (highlightedPolyline) {
-          highlightedPolyline.setStyle({ weight: 3, opacity: 0.85 });
-          highlightedPolyline = null;
-        }
-        if (selectedRiverText) {
-          selectedRiverText.innerHTML = 'মানচিত্রে নদীর ওপর ক্লিক করে বিস্তারিত দেখুন';
-        }
-      });
+      resetMapBtn.addEventListener('click', resetMapView);
     }
 
     // Search Input with Debounce
@@ -251,7 +304,7 @@
         searchTimeout = setTimeout(() => {
           searchQuery = val.toLowerCase();
           applyFilters();
-        }, 150);
+        }, 120);
       });
     }
 
@@ -261,6 +314,7 @@
         if (riverSearchInput) riverSearchInput.value = '';
         clearSearchBtn.classList.add('hidden');
         searchQuery = '';
+        resetMapView();
         applyFilters();
         if (riverSearchInput) riverSearchInput.focus();
       });
@@ -339,34 +393,82 @@
     });
   }
 
-  // Apply filters
+  function resetMapView() {
+    if (!map) return;
+    map.flyTo([23.6850, 90.3563], 7, { duration: 1.2 });
+    if (highlightedPolyline) {
+      map.removeLayer(highlightedPolyline);
+      highlightedPolyline = null;
+    }
+    if (flowMarkerGroup) {
+      flowMarkerGroup.clearLayers();
+    }
+    if (selectedRiverText) {
+      selectedRiverText.innerHTML = 'মানচিত্রে নদীর ওপর ক্লিক করে বিস্তারিত দেখুন';
+    }
+    if (activeFlowBanner) {
+      activeFlowBanner.classList.add('hidden');
+    }
+  }
+
+  // Apply filters with Smart Scoring and Strict Name Toggle
   function applyFilters() {
-    filteredRivers = allRivers.filter(r => {
-      if (selectedBasin !== 'all' && r.basin !== selectedBasin) return false;
-      if (selectedDivision !== 'all' && (!r.divisions || !r.divisions.includes(selectedDivision))) return false;
-      if (selectedTransboundary === 'yes' && !r.transboundary) return false;
-      if (selectedTransboundary === 'no' && r.transboundary) return false;
-      if (selectedStatus !== 'all' && r.status !== selectedStatus) return false;
+    const isStrict = strictNameToggle ? strictNameToggle.checked : true;
+    const q = searchQuery.toLowerCase().trim();
 
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        const matchNameBn = r.name_bn && r.name_bn.toLowerCase().includes(q);
-        const matchNameEn = r.name_en && r.name_en.toLowerCase().includes(q);
-        const matchOriginBn = r.origin_bn && r.origin_bn.toLowerCase().includes(q);
-        const matchOriginEn = r.origin_en && r.origin_en.toLowerCase().includes(q);
-        const matchOutfall = (r.outfall_bn && r.outfall_bn.toLowerCase().includes(q)) || (r.outfall_en && r.outfall_en.toLowerCase().includes(q));
-        const matchFlow = r.flow_path && r.flow_path.toLowerCase().includes(q);
-        const matchDist = r.districts && r.districts.some(d => d.toLowerCase().includes(q));
-        const matchBasin = r.basin && r.basin.toLowerCase().includes(q);
-        const matchHistory = r.historical_bcs_significance && r.historical_bcs_significance.toLowerCase().includes(q);
+    const scoredResults = [];
 
-        if (!matchNameBn && !matchNameEn && !matchOriginBn && !matchOriginEn && !matchOutfall && !matchFlow && !matchDist && !matchBasin && !matchHistory) {
-          return false;
+    allRivers.forEach(r => {
+      // Basin, Division, Transboundary, Status checks
+      if (selectedBasin !== 'all' && r.basin !== selectedBasin) return;
+      if (selectedDivision !== 'all' && (!r.divisions || !r.divisions.includes(selectedDivision))) return;
+      if (selectedTransboundary === 'yes' && !r.transboundary) return;
+      if (selectedTransboundary === 'no' && r.transboundary) return;
+      if (selectedStatus !== 'all' && r.status !== selectedStatus) return;
+
+      if (q) {
+        const nameEn = (r.name_en || '').toLowerCase();
+        const nameBn = (r.name_bn || '').toLowerCase();
+
+        let score = 0;
+
+        // Exact Name Match (Highest priority)
+        if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী') {
+          score = 10000;
+        } else if (nameEn.startsWith(q) || nameBn.startsWith(q)) {
+          score = 5000;
+        } else if (nameEn.includes(q) || nameBn.includes(q)) {
+          score = 1000;
+        } else if (!isStrict) {
+          // Broad matching in other attributes
+          const origin = (r.origin_bn || '').toLowerCase();
+          const outfall = (r.outfall_bn || '').toLowerCase();
+          const flow = (r.flow_path || '').toLowerCase();
+          const districts = (r.districts || []).join(' ').toLowerCase();
+
+          if (origin.includes(q) || outfall.includes(q) || flow.includes(q) || districts.includes(q)) {
+            score = 50;
+          }
         }
-      }
 
-      return true;
+        if (score > 0) {
+          scoredResults.push({ river: r, score });
+        }
+      } else {
+        scoredResults.push({ river: r, score: 0 });
+      }
     });
+
+    // Sort by score descending so exact river matches appear immediately
+    scoredResults.sort((a, b) => b.score - a.score);
+    filteredRivers = scoredResults.map(item => item.river);
+
+    // Auto-focus and highlight flow path on map when a specific river is queried
+    if (q && filteredRivers.length > 0 && scoredResults[0].score >= 5000) {
+      traceRiverFlowOnMap(filteredRivers[0]);
+    } else if (!q) {
+      if (activeFlowBanner) activeFlowBanner.classList.add('hidden');
+    }
 
     renderRivers();
     renderMapRivers();
@@ -388,6 +490,7 @@
     if (filterStatus) filterStatus.value = 'all';
     document.querySelectorAll('.quick-filter-chip').forEach(c => c.classList.remove('active'));
 
+    resetMapView();
     applyFilters();
   }
 
@@ -399,7 +502,7 @@
     if (riversGrid) riversGrid.classList.toggle('hidden', filteredRivers.length === 0);
   }
 
-  // Render Rivers Grid
+  // Render Rivers Grid with Complete Flow Stepper
   function renderRivers() {
     if (!riversGrid) return;
     riversGrid.innerHTML = '';
@@ -410,6 +513,9 @@
       card.className = 'river-card';
       const statusClass = `status-${(r.status || '').replace(/\s+/g, '-')}`;
 
+      // Build flow steps
+      const flowSteps = (r.flow_path || '').split('➔').map(s => s.trim()).filter(Boolean);
+
       card.innerHTML = `
         <div class="river-card-header">
           <h4 class="river-name">${r.name_bn} <small style="font-size:0.75rem; color:var(--text-muted);">(${r.name_en || ''})</small></h4>
@@ -419,23 +525,25 @@
         <span class="status-badge ${statusClass}">${r.status}</span>
 
         <div class="river-info-row">
-          <strong>দৈর্ঘ্য:</strong> ${r.length_km} কিলোমিটার
+          <strong>দৈর্ঘ্য:</strong> ${r.length_km} কিলোমিটার | <strong>অববাহিকা:</strong> ${r.basin}
         </div>
-        <div class="river-info-row">
-          <strong>অববাহিকা:</strong> ${r.basin}
-        </div>
-        <div class="river-info-row">
-          <strong>উৎপত্তি:</strong> ${r.origin_bn || r.origin_en}
-        </div>
-        <div class="river-info-row">
-          <strong>পতন/মোহনা:</strong> ${r.outfall_bn || r.outfall_en}
+
+        <!-- Complete Flow Path Stepper -->
+        <div class="flow-path-container">
+          <div class="flow-path-title"><i class="fa-solid fa-route"></i> নদীর সম্পূর্ণ গতিপথ (Complete Flow Course):</div>
+          <div class="flow-stepper">
+            <span class="flow-step-point origin"><i class="fa-solid fa-circle-dot"></i> [উৎস] ${r.origin_bn || r.origin_en}</span>
+            ${flowSteps.length > 0 ? flowSteps.map(step => `<span class="flow-step-arrow">➔</span><span class="flow-step-point">${step}</span>`).join('') : ''}
+            <span class="flow-step-arrow">➔</span>
+            <span class="flow-step-point outfall"><i class="fa-solid fa-flag-checkered"></i> [পতন] ${r.outfall_bn || r.outfall_en}</span>
+          </div>
         </div>
 
         ${r.transboundary ? `<div class="transboundary-tag"><i class="fa-solid fa-earth-americas"></i> অভিন্ন নদী (${r.transboundary_country})</div>` : ''}
 
         <div class="river-card-actions">
-          <button class="btn btn-sm btn-outline focus-river-btn" data-id="${r.id}"><i class="fa-solid fa-crosshairs"></i> ম্যাপে দেখুন</button>
-          <button class="btn btn-sm btn-primary view-details-btn" data-id="${r.id}"><i class="fa-solid fa-circle-info"></i> বিস্তারিত</button>
+          <button class="btn btn-sm btn-outline focus-river-btn" data-id="${r.id}"><i class="fa-solid fa-route"></i> মানচিত্রে গতিপথ দেখুন</button>
+          <button class="btn btn-sm btn-primary view-details-btn" data-id="${r.id}"><i class="fa-solid fa-circle-info"></i> বিস্তারিত তথ্য</button>
         </div>
       `;
 
@@ -461,14 +569,11 @@
     riversGrid.appendChild(fragment);
   }
 
-  // Focus river on map
+  // Focus river on map and trace flow path
   function focusRiverOnMap(river) {
     if (!map || !river.coords || river.coords.length === 0) return;
     document.getElementById('mapSection').scrollIntoView({ behavior: 'smooth' });
-    map.flyTo(river.coords[0], 9, { duration: 1.5 });
-    if (selectedRiverText) {
-      selectedRiverText.innerHTML = `ম্যাপে ফোকাস করা হয়েছে: <strong>${river.name_bn}</strong> (${river.length_km} কিমি)`;
-    }
+    traceRiverFlowOnMap(river);
   }
 
   // Open River Details Modal
@@ -499,20 +604,26 @@
           <div>${r.transboundary ? `হ্যাঁ (${r.transboundary_country} সীমান্ত)` : 'না (অভ্যন্তরীণ নদী)'}</div>
         </div>
         <div class="detail-box full-width">
-          <label>উৎপত্তি স্থল</label>
-          <div>${r.origin_bn || r.origin_en}</div>
+          <label>উৎপত্তি স্থল (Source)</label>
+          <div><strong>${r.origin_bn || r.origin_en}</strong></div>
         </div>
         <div class="detail-box full-width">
-          <label>প্রবাহ পথ ও জেলাসমূহ</label>
-          <div>${r.flow_path} (${(r.districts || []).join(', ')})</div>
+          <label><i class="fa-solid fa-route"></i> সম্পূর্ণ গতিপথ ও প্রবাহ পথ (Course & Districts)</label>
+          <div style="font-size:1.05rem; line-height:1.6; margin-top:4px; color:var(--accent-cyan);">${r.flow_path}</div>
+          <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">সংশ্লিষ্ট জেলা: ${(r.districts || []).join(', ')}</div>
         </div>
         <div class="detail-box full-width">
-          <label>পতন / মোহনা</label>
-          <div>${r.outfall_bn || r.outfall_en}</div>
+          <label>পতন / মোহনা (Outfall)</label>
+          <div><strong>${r.outfall_bn || r.outfall_en}</strong></div>
         </div>
         <div class="detail-box full-width bcs-highlight-box">
           <label><i class="fa-solid fa-graduation-cap"></i> বিসিএস ও সাধারণ জ্ঞান তথ্য</label>
           <div>${r.historical_bcs_significance}</div>
+        </div>
+        <div class="detail-box full-width">
+          <button class="btn btn-primary" onclick="window.BD_RIVERS_APP.focusRiver('${r.id}')" style="width:100%; justify-content:center;">
+            <i class="fa-solid fa-map-location-dot"></i> মানচিত্রে সম্পূর্ণ গতিপথ দেখুন ও ট্র্যাক করুন
+          </button>
         </div>
       </div>
     `;
@@ -607,9 +718,16 @@
   window.BD_RIVERS_APP = {
     allRivers: () => allRivers,
     search: (q) => {
+      if (riverSearchInput) riverSearchInput.value = q;
       searchQuery = q.toLowerCase();
       applyFilters();
-    }
+    },
+    focusRiver: (id) => {
+      closeRiverModal();
+      const r = allRivers.find(x => x.id === id);
+      if (r) focusRiverOnMap(r);
+    },
+    resetMapView: resetMapView
   };
 
   // DOM ready

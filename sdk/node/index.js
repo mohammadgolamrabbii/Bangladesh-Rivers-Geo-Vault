@@ -39,22 +39,46 @@ function getRiverById(id) {
   return rivers.find(r => r.id.toLowerCase() === id.toLowerCase()) || null;
 }
 
-function searchRivers(query) {
+function searchRivers(query, options = {}) {
   if (!query) return loadRivers();
   const q = query.trim().toLowerCase();
   const rivers = loadRivers();
-  return rivers.filter(r => 
-    (r.name_bn && r.name_bn.toLowerCase().includes(q)) ||
-    (r.name_en && r.name_en.toLowerCase().includes(q)) ||
-    (r.origin_bn && r.origin_bn.toLowerCase().includes(q)) ||
-    (r.origin_en && r.origin_en.toLowerCase().includes(q)) ||
-    (r.outfall_bn && r.outfall_bn.toLowerCase().includes(q)) ||
-    (r.outfall_en && r.outfall_en.toLowerCase().includes(q)) ||
-    (r.basin && r.basin.toLowerCase().includes(q)) ||
-    (r.districts && r.districts.some(d => d.toLowerCase().includes(q))) ||
-    (r.divisions && r.divisions.some(div => div.toLowerCase().includes(q))) ||
-    (r.historical_bcs_significance && r.historical_bcs_significance.toLowerCase().includes(q))
-  );
+  const nameOnly = options.nameOnly === true;
+
+  const scoredResults = [];
+
+  rivers.forEach(r => {
+    let score = 0;
+    const nameEn = (r.name_en || '').toLowerCase();
+    const nameBn = (r.name_bn || '').toLowerCase();
+
+    // Exact matches
+    if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী') {
+      score += 10000;
+    } else if (nameEn.startsWith(q) || nameBn.startsWith(q)) {
+      score += 5000;
+    } else if (nameEn.includes(q) || nameBn.includes(q)) {
+      score += 1000;
+    } else if (!nameOnly) {
+      const originBn = (r.origin_bn || '').toLowerCase();
+      const originEn = (r.origin_en || '').toLowerCase();
+      const outfallBn = (r.outfall_bn || '').toLowerCase();
+      const basin = (r.basin || '').toLowerCase();
+      const districts = (r.districts || []).join(' ').toLowerCase();
+
+      if (originBn.includes(q) || originEn.includes(q) || outfallBn.includes(q) || basin.includes(q) || districts.includes(q)) {
+        score += 50;
+      }
+    }
+
+    if (score > 0) {
+      scoredResults.push({ river: r, score });
+    }
+  });
+
+  // Sort by score descending (exact name matches always ranked highest)
+  scoredResults.sort((a, b) => b.score - a.score);
+  return scoredResults.map(item => item.river);
 }
 
 function getTransboundaryRivers() {
