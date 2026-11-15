@@ -1427,3 +1427,374 @@ html.light .active-flow-banner {
   .section-card { padding: 20px; }
   .leaflet-map-box { height: 380px; }
 }
+
+/* ========================================================
+   Google Maps Precision HUD & Controls (Ultra-Comfort Map UX)
+   ======================================================== */
+
+/* Floating Search HUD on Map Canvas */
+.map-floating-hud {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1000;
+  width: min(380px, calc(100% - 28px));
+}
+
+.floating-search-bar {
+  display: flex;
+  align-items: center;
+  background: rgba(11, 21, 40, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-full);
+  padding: 7px 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(6, 182, 212, 0.2);
+  backdrop-filter: blur(12px);
+  transition: all var(--transition-fast);
+}
+
+.floating-search-bar:focus-within {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 0 2px rgba(6, 182, 212, 0.35);
+  background: rgba(13, 24, 46, 0.98);
+}
+
+.search-hud-icon {
+  color: var(--accent-cyan);
+  font-size: 0.95rem;
+  margin-right: 10px;
+}
+
+.floating-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.88rem;
+}
+
+.floating-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.clear-floating-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  transition: color var(--transition-fast);
+}
+
+.clear-floating-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Floating Suggestions Dropdown */
+.floating-suggestions-dropdown {
+  margin-top: 6px;
+  background: rgba(11, 21, 40, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-md);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(14px);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 1005;
+}
+
+/* Floating Action Buttons (FABs) */
+.map-floating-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-fab-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(11, 21, 40, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  transition: all var(--transition-fast);
+}
+
+.map-fab-btn:hover {
+  background: var(--accent-cyan);
+  color: #060c18;
+  border-color: var(--accent-cyan);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(6, 182, 212, 0.4);
+}
+
+/* Floating River Dossier Card (Google Maps Bottom/Side Sheet) */
+.map-floating-card {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1000;
+  width: min(390px, calc(100% - 32px));
+  background: rgba(11, 21, 40, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(14px);
+  animation: cardSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card-close-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.card-handle {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.card-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 6px;
+  transition: color var(--transition-fast);
+}
+
+.card-close-btn:hover {
+  color: var(--text-primary);
+}
+
+.floating-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.floating-river-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.floating-river-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.floating-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+}
+
+.floating-badge.badge-trans {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.floating-badge.badge-status {
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.floating-card-metrics {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.metric-item {
+  font-size: 0.76rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.metric-item i {
+  color: var(--accent-cyan);
+}
+
+.floating-card-route {
+  background: rgba(6, 12, 24, 0.6);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  font-size: 0.78rem;
+}
+
+.route-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.route-line:last-child {
+  margin-bottom: 0;
+}
+
+.route-marker {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.route-marker.origin {
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+.route-marker.outfall {
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.floating-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.hud-action-btn {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.hud-action-btn.primary {
+  background: var(--accent-cyan);
+  color: #060c18;
+  border: none;
+}
+.hud-action-btn.primary:hover {
+  background: #22d3ee;
+  transform: translateY(-1px);
+}
+
+.hud-action-btn.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.hud-action-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* User GPS Pulse Animation Marker */
+.user-gps-pulse {
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+
+.user-gps-dot {
+  width: 14px;
+  height: 14px;
+  background: #0284c7;
+  border: 2.5px solid #ffffff;
+  border-radius: 50%;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  box-shadow: 0 0 8px rgba(2, 132, 199, 0.8);
+}
+
+.user-gps-pulse::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(2, 132, 199, 0.4);
+  animation: gpsPulse 1.8s infinite ease-out;
+}
+
+@keyframes gpsPulse {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* Leaflet Scale Bar Dark Glass Theme */
+.leaflet-control-scale-line {
+  background: rgba(11, 21, 40, 0.85) !important;
+  border: 2px solid rgba(255, 255, 255, 0.6) !important;
+  border-top: none !important;
+  color: #f1f5f9 !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 2px 6px !important;
+  backdrop-filter: blur(6px) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Pseudo-Fullscreen Enhanced */
+.map-card.fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 12px 16px !important;
+  background: #060c18 !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-card.fullscreen .map-wrapper {
+  flex: 1;
+  height: 100% !important;
+}
+
+.map-card.fullscreen .leaflet-map-box {
+  height: calc(100vh - 100px) !important;
+}

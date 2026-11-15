@@ -41,6 +41,21 @@
   const fullscreenMapBtn = document.getElementById('fullscreenMapBtn');
   const mapSection = document.getElementById('mapSection');
   const filterBasin = document.getElementById('filterBasin');
+  
+  const mapFloatingSearchInput = document.getElementById('mapFloatingSearchInput');
+  const clearFloatingSearchBtn = document.getElementById('clearFloatingSearchBtn');
+  const floatingSearchSuggestions = document.getElementById('floatingSearchSuggestions');
+  const mapFloatingRiverCard = document.getElementById('mapFloatingRiverCard');
+  const floatingLocateBtn = document.getElementById('floatingLocateBtn');
+  const floatingResetBtn = document.getElementById('floatingResetBtn');
+  const floatingFullscreenBtn = document.getElementById('floatingFullscreenBtn');
+  const closeFloatingCardBtn = document.getElementById('closeFloatingCardBtn');
+  const floatingCardZoomBtn = document.getElementById('floatingCardZoomBtn');
+  const floatingCardDetailsBtn = document.getElementById('floatingCardDetailsBtn');
+  let userGpsMarker = null;
+  let currentlySelectedRiver = null;
+  let activeFloatingSuggestionIndex = -1;
+
   const filterDivision = document.getElementById('filterDivision');
   const filterTransboundary = document.getElementById('filterTransboundary');
   const filterStatus = document.getElementById('filterStatus');
@@ -120,8 +135,20 @@
       center: [23.6850, 90.3563],
       zoom: 7,
       minZoom: 6,
-      maxZoom: 20
+      maxZoom: 20,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      wheelPxPerZoomLevel: 100,
+      wheelDebounceTime: 40
     });
+
+    // Dynamic Metric Scale Bar (Google Maps benchmark)
+    L.control.scale({
+      metric: true,
+      imperial: false,
+      position: 'bottomleft',
+      maxWidth: 130
+    }).addTo(map);
 
     // Basemap Tile Layers
     tileLayers = {
@@ -363,6 +390,7 @@
     if (selectedRiverText) {
       selectedRiverText.innerHTML = `গতিপথ ফোকাস: <strong>${river.name_bn} (${river.name_en})</strong> | দৈর্ঘ্য: ${river.length_km} কিমি | অববাহিকা: ${river.basin}`;
     }
+    updateFloatingRiverCard(river);
 
     if (activeFlowBanner) {
       activeFlowBanner.innerHTML = `
@@ -480,6 +508,113 @@
     });
 
     // Clear Search Button
+    
+    // Google Maps Floating Search Input & Sync
+    let floatingSearchTimeout;
+    if (mapFloatingSearchInput) {
+      mapFloatingSearchInput.addEventListener('input', (e) => {
+        clearTimeout(floatingSearchTimeout);
+        const val = e.target.value.trim();
+        if (clearFloatingSearchBtn) clearFloatingSearchBtn.classList.toggle('hidden', val.length === 0);
+        if (riverSearchInput) riverSearchInput.value = val;
+        if (clearSearchBtn) clearSearchBtn.classList.toggle('hidden', val.length === 0);
+
+        // Render autocomplete into floating dropdown
+        renderFloatingAutocomplete(val);
+
+        floatingSearchTimeout = setTimeout(() => {
+          searchQuery = val.toLowerCase();
+          applyFilters();
+        }, 120);
+      });
+
+      // Keyboard navigation for floating autocomplete
+      mapFloatingSearchInput.addEventListener('keydown', (e) => {
+        if (!floatingSearchSuggestions || floatingSearchSuggestions.classList.contains('hidden')) return;
+        const items = floatingSearchSuggestions.querySelectorAll('.suggestion-item');
+        if (items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeFloatingSuggestionIndex = (activeFloatingSuggestionIndex + 1) % items.length;
+          items.forEach((it, i) => it.classList.toggle('active', i === activeFloatingSuggestionIndex));
+          items[activeFloatingSuggestionIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeFloatingSuggestionIndex = (activeFloatingSuggestionIndex - 1 + items.length) % items.length;
+          items.forEach((it, i) => it.classList.toggle('active', i === activeFloatingSuggestionIndex));
+          items[activeFloatingSuggestionIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          if (activeFloatingSuggestionIndex >= 0 && activeFloatingSuggestionIndex < items.length) {
+            e.preventDefault();
+            items[activeFloatingSuggestionIndex].click();
+          }
+        } else if (e.key === 'Escape') {
+          floatingSearchSuggestions.classList.add('hidden');
+        }
+      });
+    }
+
+    // Clear Floating Search Button
+    if (clearFloatingSearchBtn) {
+      clearFloatingSearchBtn.addEventListener('click', () => {
+        if (mapFloatingSearchInput) mapFloatingSearchInput.value = '';
+        if (riverSearchInput) riverSearchInput.value = '';
+        clearFloatingSearchBtn.classList.add('hidden');
+        if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+        searchQuery = '';
+        if (floatingSearchSuggestions) floatingSearchSuggestions.classList.add('hidden');
+        if (searchSuggestions) searchSuggestions.classList.add('hidden');
+        resetMapView();
+        applyFilters();
+      });
+    }
+
+    // Close floating autocomplete when clicking outside
+    document.addEventListener('click', (e) => {
+      if (floatingSearchSuggestions && !floatingSearchSuggestions.contains(e.target) && e.target !== mapFloatingSearchInput) {
+        floatingSearchSuggestions.classList.add('hidden');
+      }
+    });
+
+    // Floating Action Buttons (FABs)
+    if (floatingLocateBtn) {
+      floatingLocateBtn.addEventListener('click', locateUser);
+    }
+    if (floatingResetBtn) {
+      floatingResetBtn.addEventListener('click', resetMapView);
+    }
+    if (floatingFullscreenBtn) {
+      floatingFullscreenBtn.addEventListener('click', () => {
+        if (fullscreenMapBtn) fullscreenMapBtn.click();
+      });
+    }
+
+    // Floating River Dossier Card Buttons
+    if (closeFloatingCardBtn) {
+      closeFloatingCardBtn.addEventListener('click', () => {
+        if (mapFloatingRiverCard) mapFloatingRiverCard.classList.add('hidden');
+      });
+    }
+    if (floatingCardZoomBtn) {
+      floatingCardZoomBtn.addEventListener('click', () => {
+        if (highlightedPolyline && map) {
+          map.invalidateSize();
+          const bounds = highlightedPolyline.getBounds();
+          if (bounds.isValid()) {
+            map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 14, duration: 1.2 });
+          }
+        }
+      });
+    }
+    if (floatingCardDetailsBtn) {
+      floatingCardDetailsBtn.addEventListener('click', () => {
+        if (currentlySelectedRiver) {
+          openRiverModal(currentlySelectedRiver);
+        }
+      });
+    }
+
     if (clearSearchBtn) {
       clearSearchBtn.addEventListener('click', () => {
         if (riverSearchInput) riverSearchInput.value = '';
@@ -583,6 +718,7 @@
   function resetMapView() {
     if (!map) return;
     map.flyTo([23.6850, 90.3563], 7, { duration: 1.2 });
+    if (mapFloatingRiverCard) mapFloatingRiverCard.classList.add('hidden');
     if (highlightGlowPolyline) {
       map.removeLayer(highlightGlowPolyline);
       highlightGlowPolyline = null;
@@ -618,6 +754,87 @@
   }
 
   // Live Instant Autocomplete Dropdown
+  
+  function renderFloatingAutocomplete(query) {
+    if (!floatingSearchSuggestions) return;
+    const q = (query || '').toLowerCase().trim();
+    if (!q || q.length < 1) {
+      floatingSearchSuggestions.innerHTML = '';
+      floatingSearchSuggestions.classList.add('hidden');
+      activeFloatingSuggestionIndex = -1;
+      return;
+    }
+
+    const matches = [];
+    allRivers.forEach(r => {
+      const nameEn = (r.name_en || '').toLowerCase();
+      const nameBn = (r.name_bn || '').toLowerCase();
+      let score = 0;
+      if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী') {
+        score = 10000;
+      } else if (nameEn.startsWith(q) || nameBn.startsWith(q)) {
+        score = 5000;
+      } else if (nameEn.includes(q) || nameBn.includes(q)) {
+        score = 2000;
+      } else {
+        const districts = (r.districts || []).join(' ').toLowerCase();
+        if (districts.includes(q)) score = 500;
+      }
+      if (score > 0) matches.push({ river: r, score });
+    });
+
+    matches.sort((a, b) => b.score - a.score);
+    const topMatches = matches.slice(0, 8);
+
+    if (topMatches.length === 0) {
+      floatingSearchSuggestions.innerHTML = `<div style="padding: 12px 16px; color: var(--text-muted); font-size: 0.85rem;"><i class="fa-solid fa-circle-question"></i> কোনো নদী পাওয়া যায়নি (যেমন: balu, পদ্মা, তুরাগ)।</div>`;
+      floatingSearchSuggestions.classList.remove('hidden');
+      return;
+    }
+
+    floatingSearchSuggestions.innerHTML = topMatches.map((item, idx) => {
+      const r = item.river;
+      const isEndangered = (r.status || '').includes('বিপন্ন') || (r.status || '').includes('ভরাট');
+      const badgeStyle = isEndangered 
+        ? 'background: rgba(244,63,94,0.15); color: #f43f5e; border-color: rgba(244,63,94,0.3);' 
+        : 'background: rgba(16,185,129,0.15); color: #10b981; border-color: rgba(16,185,129,0.3);';
+
+      return `
+        <div class="suggestion-item" data-index="${idx}" data-id="${r.id}" role="option">
+          <div class="suggestion-item-main">
+            <div class="suggestion-name">
+              <span>${r.name_bn}</span>
+              <span class="suggestion-en">${r.name_en}</span>
+              ${r.transboundary ? '<span style="font-size:0.7rem; color:#38bdf8; font-weight:600;"><i class="fa-solid fa-flag"></i> অভিন্ন</span>' : ''}
+            </div>
+            <div class="suggestion-meta">
+              <span><i class="fa-solid fa-location-dot"></i> ${(r.districts || []).slice(0, 2).join(', ')}</span>
+              <span>&bull;</span>
+              <span>${r.basin}</span>
+            </div>
+          </div>
+          <div class="suggestion-badges">
+            <span class="suggestion-badge">${r.length_km} কিমি</span>
+            <span class="suggestion-badge" style="${badgeStyle}">${r.status}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    floatingSearchSuggestions.classList.remove('hidden');
+    activeFloatingSuggestionIndex = -1;
+
+    floatingSearchSuggestions.querySelectorAll('.suggestion-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = item.getAttribute('data-id');
+        const river = allRivers.find(x => x.id === id);
+        if (river) {
+          selectRiverFromSuggestion(river);
+        }
+      });
+    });
+  }
+
   function renderAutocomplete(query) {
     if (!searchSuggestions) return;
     const q = (query || '').toLowerCase().trim();
@@ -699,19 +916,152 @@
     });
   }
 
+  
+  // Update Google Maps-style Floating River Dossier Card
+  function updateFloatingRiverCard(river) {
+    if (!mapFloatingRiverCard || !river) return;
+    currentlySelectedRiver = river;
+
+    const titleEl = document.getElementById('floatingCardTitle');
+    const subEl = document.getElementById('floatingCardSubtitle');
+    const transBadge = document.getElementById('floatingCardTransboundary');
+    const statusBadge = document.getElementById('floatingCardStatus');
+    const lenEl = document.getElementById('floatingCardLength');
+    const basinEl = document.getElementById('floatingCardBasin');
+    const distEl = document.getElementById('floatingCardDistricts');
+    const originEl = document.getElementById('floatingCardOrigin');
+    const outfallEl = document.getElementById('floatingCardOutfall');
+
+    if (titleEl) titleEl.textContent = river.name_bn;
+    if (subEl) subEl.textContent = river.name_en || '';
+
+    if (transBadge) {
+      if (river.transboundary) {
+        transBadge.innerHTML = `<i class="fa-solid fa-flag"></i> অভিন্ন (${river.transboundary_country || 'ভারত'})`;
+        transBadge.classList.remove('hidden');
+      } else {
+        transBadge.innerHTML = `<i class="fa-solid fa-water"></i> অভ্যন্তরীণ`;
+        transBadge.classList.remove('hidden');
+      }
+    }
+
+    if (statusBadge) {
+      statusBadge.textContent = river.status || 'প্রবাহিত ও সক্রিয়';
+      const isBad = (river.status || '').includes('বিপন্ন') || (river.status || '').includes('ভরাট');
+      statusBadge.style.color = isBad ? '#f87171' : '#34d399';
+      statusBadge.style.background = isBad ? 'rgba(239, 68, 68, 0.16)' : 'rgba(16, 185, 129, 0.16)';
+      statusBadge.style.borderColor = isBad ? 'rgba(239, 68, 68, 0.35)' : 'rgba(16, 185, 129, 0.35)';
+    }
+
+    if (lenEl) lenEl.textContent = `${river.length_km} কিমি`;
+    if (basinEl) basinEl.textContent = river.basin || 'নদী অববাহিকা';
+    if (distEl) distEl.textContent = (river.districts && river.districts.length > 0) ? `${river.districts.length}টি জেলা (${river.districts.slice(0, 2).join(', ')})` : 'বাংলাদেশ';
+    if (originEl) originEl.textContent = river.origin_bn || river.origin_en || 'উচ্চভূমি';
+    if (outfallEl) outfallEl.textContent = river.outfall_bn || river.outfall_en || 'প্রধান মোহনা';
+
+    mapFloatingRiverCard.classList.remove('hidden');
+  }
+
+  // Google Maps-Grade Geolocation & Nearest River Detection
+  function locateUser() {
+    if (!navigator.geolocation) {
+      alert('আপনার ব্রাউজারে Geolocation সমর্থিত নয়।');
+      return;
+    }
+
+    if (floatingLocateBtn) floatingLocateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (floatingLocateBtn) floatingLocateBtn.innerHTML = '<i class="fa-solid fa-crosshairs"></i>';
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        if (!map) return;
+
+        if (userGpsMarker) {
+          map.removeLayer(userGpsMarker);
+        }
+
+        const gpsIcon = L.divIcon({
+          className: 'user-gps-pulse-wrapper',
+          html: '<div class="user-gps-pulse"><div class="user-gps-dot"></div></div>',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        userGpsMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
+
+        // Find nearest river in allRivers
+        let nearestRiver = null;
+        let minDistance = Infinity;
+
+        allRivers.forEach(r => {
+          if (!r.coords || r.coords.length === 0) return;
+          r.coords.forEach(pt => {
+            const dLat = (pt[0] - lat) * (Math.PI / 180);
+            const dLng = (pt[1] - lng) * (Math.PI / 180);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat * (Math.PI / 180)) * Math.cos(pt[0] * (Math.PI / 180)) *
+                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const dKm = 6371 * c;
+            if (dKm < minDistance) {
+              minDistance = dKm;
+              nearestRiver = r;
+            }
+          });
+        });
+
+        const distText = minDistance < 1 ? `${Math.round(minDistance * 1000)} মিটার` : `${minDistance.toFixed(1)} কিমি`;
+        const popupContent = nearestRiver 
+          ? `<div style="font-size:0.88rem; line-height:1.4;"><strong><i class="fa-solid fa-location-crosshairs" style="color:#0284c7;"></i> আপনার বর্তমান অবস্থান (GPS)</strong><br>সবচেয়ে নিকটবর্তী নদী: <strong>${nearestRiver.name_bn}</strong> (${nearestRiver.name_en})<br>দূরত্ব: মাত্র <strong>${distText}</strong> দূরে!<br><br><button id="gpsFlyBtn" class="btn btn-xs btn-primary" style="padding: 4px 10px; font-size: 0.78rem; border-radius: 4px; cursor: pointer;">নদীটির গতিপথ দেখুন ➔</button></div>`
+          : `<strong>আপনার অবস্থান (GPS)</strong><br>অক্ষাংশ: ${lat.toFixed(4)}, দ্রাঘিমাংশ: ${lng.toFixed(4)}`;
+
+        userGpsMarker.bindPopup(popupContent).openPopup();
+        map.flyTo([lat, lng], 13, { duration: 1.2 });
+
+        setTimeout(() => {
+          const btn = document.getElementById('gpsFlyBtn');
+          if (btn && nearestRiver) {
+            btn.addEventListener('click', () => {
+              selectRiverFromSuggestion(nearestRiver);
+            });
+          }
+        }, 150);
+      },
+      (err) => {
+        if (floatingLocateBtn) floatingLocateBtn.innerHTML = '<i class="fa-solid fa-crosshairs"></i>';
+        alert('আপনার ভৌগোলিক অবস্থান পাওয়া যায়নি (' + (err.message || 'অনুমতি বাতিল') + ')।');
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }
+
   function selectRiverFromSuggestion(river) {
+    currentlySelectedRiver = river;
     if (riverSearchInput) {
       riverSearchInput.value = river.name_bn;
     }
+    if (mapFloatingSearchInput) {
+      mapFloatingSearchInput.value = river.name_bn;
+    }
     if (clearSearchBtn) {
       clearSearchBtn.classList.remove('hidden');
+    }
+    if (clearFloatingSearchBtn) {
+      clearFloatingSearchBtn.classList.remove('hidden');
     }
     searchQuery = river.name_bn.toLowerCase();
     if (searchSuggestions) {
       searchSuggestions.classList.add('hidden');
     }
+    if (floatingSearchSuggestions) {
+      floatingSearchSuggestions.classList.add('hidden');
+    }
     applyFilters();
     focusRiverOnMap(river);
+    updateFloatingRiverCard(river);
   }
 
   // Apply filters with Smart Relevance Scoring

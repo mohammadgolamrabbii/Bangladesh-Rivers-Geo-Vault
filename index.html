@@ -264,8 +264,63 @@
 
       <!-- Map Container -->
       <div id="activeFlowBanner" class="active-flow-banner hidden"></div>
-      <div class="map-wrapper">
+      <div class="map-wrapper" id="mapWrapper">
         <div id="riverMap" class="leaflet-map-box"></div>
+
+        <!-- Google Maps-style Floating Search HUD -->
+        <div class="map-floating-hud" id="mapFloatingHud">
+          <div class="floating-search-bar">
+            <i class="fa-solid fa-magnifying-glass search-hud-icon"></i>
+            <input type="text" id="mapFloatingSearchInput" class="floating-search-input" placeholder="ম্যাপে নদী খুঁজুন (যেমন: balu, পদ্মা, তুরাগ)..." autocomplete="off" spellcheck="false">
+            <button id="clearFloatingSearchBtn" class="clear-floating-btn hidden" title="সার্চ মুছুন"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div id="floatingSearchSuggestions" class="floating-suggestions-dropdown hidden" role="listbox"></div>
+        </div>
+
+        <!-- Google Maps-style Floating Action Buttons (FABs) -->
+        <div class="map-floating-controls">
+          <button id="floatingLocateBtn" class="map-fab-btn" title="আমার অবস্থান (GPS ও নিকটবর্তী নদী)">
+            <i class="fa-solid fa-crosshairs"></i>
+          </button>
+          <button id="floatingResetBtn" class="map-fab-btn" title="সমগ্র বাংলাদেশ ভিউ">
+            <i class="fa-solid fa-map-location-dot"></i>
+          </button>
+          <button id="floatingFullscreenBtn" class="map-fab-btn" title="ফুলস্ক্রিন ম্যাপ মোড">
+            <i class="fa-solid fa-expand"></i>
+          </button>
+        </div>
+
+        <!-- Google Maps-style Floating River Dossier Card -->
+        <div id="mapFloatingRiverCard" class="map-floating-card hidden">
+          <div class="card-close-bar">
+            <span class="card-handle"></span>
+            <button id="closeFloatingCardBtn" class="card-close-btn" title="কার্ড বন্ধ করুন"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div class="floating-card-header">
+            <div class="floating-card-title-group">
+              <span id="floatingCardTransboundary" class="floating-badge badge-trans"></span>
+              <h4 id="floatingCardTitle" class="floating-river-title">নদীর নাম</h4>
+              <span id="floatingCardSubtitle" class="floating-river-sub">English Name</span>
+            </div>
+            <span id="floatingCardStatus" class="floating-badge badge-status">প্রবাহিত ও সক্রিয়</span>
+          </div>
+          <div class="floating-card-body">
+            <div class="floating-card-metrics">
+              <div class="metric-item"><i class="fa-solid fa-ruler-horizontal"></i> <span id="floatingCardLength">-- কিমি</span></div>
+              <div class="metric-item"><i class="fa-solid fa-water"></i> <span id="floatingCardBasin">-- অববাহিকা</span></div>
+              <div class="metric-item"><i class="fa-solid fa-map-pin"></i> <span id="floatingCardDistricts">-- জেলা</span></div>
+            </div>
+            <div class="floating-card-route">
+              <div class="route-line origin"><span class="route-marker origin"></span> <strong>উৎস:</strong> <span id="floatingCardOrigin">--</span></div>
+              <div class="route-line outfall"><span class="route-marker outfall"></span> <strong>পতন:</strong> <span id="floatingCardOutfall">--</span></div>
+            </div>
+          </div>
+          <div class="floating-card-actions">
+            <button id="floatingCardZoomBtn" class="hud-action-btn primary"><i class="fa-solid fa-magnifying-glass-plus"></i> ক্লোজ-আপ জুম</button>
+            <button id="floatingCardDetailsBtn" class="hud-action-btn secondary"><i class="fa-solid fa-circle-info"></i> বিস্তারিত বিবরণ</button>
+          </div>
+        </div>
+
         <div class="map-overlay-info" id="mapOverlayInfo">
           <span class="pulse-indicator"></span>
           <span id="selectedRiverText">যেকোনো নদী নির্বাচন করুন</span>
