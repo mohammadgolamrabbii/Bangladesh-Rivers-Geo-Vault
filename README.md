@@ -1,13 +1,13 @@
-# 🌊 Bangladesh Rivers Geo-Vault (৭০০+ নদ-নদী ও মোহনার জিও-ম্যাপ ডিরেক্টরি)
+# 🌊 Bangladesh Rivers Geo-Vault (১,৩০০+ নদ-নদী ও মোহনার জিও-ম্যাপ ডিরেক্টরি)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Total Rivers](https://img.shields.io/badge/Documented%20Rivers-725%2B-0284c7.svg)](#dataset-overview)
+[![Total Rivers](https://img.shields.io/badge/Documented%20Rivers-1%2C300%2B-0284c7.svg)](#dataset-overview)
 [![Transboundary Rivers](https://img.shields.io/badge/Transboundary%20Rivers-57%20(54%20India%20|%203%20Myanmar)-0ea5e9.svg)](#transboundary-rivers)
 [![BCS Q&A Guide](https://img.shields.io/badge/BCS%20Special%20Q%26A-30%2B%20Verified-10b981.svg)](#bcs-examination-guide)
 [![GitHub Pages](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-emerald.svg)](https://mohammadgolamrabbii.github.io/Bangladesh-Rivers-Geo-Vault/)
 [![Author](https://img.shields.io/badge/Architect-Mohammad%20Golamrabbii-orange.svg)](https://github.com/mohammadgolamrabbii)
 
-> **The definitive open-source hydrological archive and geospatial directory documenting 725+ rivers of Bangladesh.** Featuring vector GeoJSON geometry, interactive Leaflet.js satellite maps, 57 official transboundary rivers, and a curated BCS examination knowledge guide.
+> **The definitive open-source hydrological archive and geospatial directory documenting 1,300+ rivers of Bangladesh.** Featuring vector GeoJSON geometry, interactive Leaflet.js satellite maps, 57 official transboundary rivers, and a curated BCS examination knowledge guide.
 
 ---
 
@@ -36,7 +36,7 @@ Explore the live web portal hosted on GitHub Pages:
 
 ## 📌 Why This Project is Unique
 
-1. **First Unified 725+ River GeoJSON Vault**: Consolidates hydrological records across Bangladesh Water Development Board (BWDB), Joint River Commission (JRC), and district gazetteers into clean, open GIS formats (`.geojson`, `.json`, `.csv`).
+1. **First Unified 1,300+ River GeoJSON Vault**: Consolidates hydrological records across Bangladesh Water Development Board (BWDB), National River Conservation Commission (NRCC), Joint River Commission (JRC), and district gazetteers into clean, open GIS formats (`.geojson`, `.json`, `.csv`).
 2. **Official 57 Transboundary Rivers Mapped**: Verified bilateral river registries (54 originating from India, 3 from Myanmar) with cross-border entry points and outfalls.
 3. **Interactive Dual-Basemap Engine**: Toggle between high-resolution satellite imagery (Esri World Imagery) and clean topographic cartography (CartoDB Voyager) with real-time vector path tracing.
 4. **BCS & Job Exam Preparation Matrix**: 30+ meticulously researched questions covering river geography, historical treaties, breeding sanctuaries (Halda), and basin bifurcations.
@@ -48,7 +48,7 @@ Explore the live web portal hosted on GitHub Pages:
 
 | Metric | Quantity | Details |
 | :--- | :--- | :--- |
-| **Total Rivers Documented** | **725** | Covering all 64 districts & 8 administrative divisions |
+| **Total Rivers Documented** | **1,315** | Covering all 64 districts & 8 administrative divisions (NRCC / BWDB) |
 | **Transboundary Rivers** | **57** | 54 with India (Joint River Commission), 3 with Myanmar |
 | **Major River Basins** | **6** | Padma-Ganges, Meghna, Brahmaputra-Jamuna, Teesta, Karnafuli, Coastal |
 | **River Health Tracking** | **4 States** | Active & Flowing, Seasonal, Encroached & Polluted, Silted |

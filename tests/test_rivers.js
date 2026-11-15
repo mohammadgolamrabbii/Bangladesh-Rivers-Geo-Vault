@@ -8,7 +8,7 @@ console.log('🧪 Starting Bangladesh Rivers Geo-Vault Test Suite...\n');
 // Test 1: Load all rivers via SDK
 const rivers = sdk.getAllRivers();
 console.log(`✓ Loaded ${rivers.length} rivers from dataset`);
-assert(rivers.length >= 700, `Expected at least 700 rivers, found ${rivers.length}`);
+assert(rivers.length >= 1300, `Expected at least 1300 rivers, found ${rivers.length}`);
 
 // Test 2: Check transboundary rivers
 const transboundary = sdk.getTransboundaryRivers();
