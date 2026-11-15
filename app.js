@@ -7,6 +7,49 @@
 (function () {
   'use strict';
 
+  // Smart Bengali-English Phonetic Transliteration & Fuzzy Matching
+  function cleanTransliteration(s) {
+    return (s || '').toLowerCase()
+      .replace(/sh/g, 's')
+      .replace(/kh/g, 'k')
+      .replace(/ph/g, 'f')
+      .replace(/th/g, 't')
+      .replace(/dh/g, 'd')
+      .replace(/bh/g, 'b')
+      .replace(/gh/g, 'g')
+      .replace(/ch/g, 'c')
+      .replace(/ee/g, 'i')
+      .replace(/oo/g, 'u')
+      .replace(/y/g, 'i')
+      .replace(/o/g, 'a')
+      .replace(/(.)\1+/g, '$1')
+      .trim();
+  }
+
+  function levenshteinDist(a, b) {
+    if (!a || !b) return (a || b || '').length;
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    const matrix = [];
+    for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+    for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+    return matrix[b.length][a.length];
+  }
+
+
   // Global State
   let allRivers = [];
   let filteredRivers = [];
@@ -139,8 +182,14 @@
       zoomSnap: 0.25,
       zoomDelta: 0.5,
       wheelPxPerZoomLevel: 100,
-      wheelDebounceTime: 40
+      wheelDebounceTime: 40,
+      zoomControl: false // Disable default top-left zoom control to prevent overlap with floating search HUD
     });
+
+    // Add Google Maps-grade Bottom-Right Zoom Controls (unobstructed by search bar!)
+    L.control.zoom({
+      position: 'bottomright'
+    }).addTo(map);
 
     // Dynamic Metric Scale Bar (Google Maps benchmark)
     L.control.scale({
@@ -627,17 +676,31 @@
       });
     }
 
-    // Quick Search Tags
+    // Quick Search Tags (clears conflicting dropdown filters to ensure 100% match!)
     document.querySelectorAll('.quick-tag-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const q = btn.getAttribute('data-query');
+        selectedBasin = 'all';
+        selectedDivision = 'all';
+        selectedTransboundary = 'all';
+        selectedStatus = 'all';
+        if (filterBasin) filterBasin.value = 'all';
+        if (filterDivision) filterDivision.value = 'all';
+        if (filterTransboundary) filterTransboundary.value = 'all';
+        if (filterStatus) filterStatus.value = 'all';
+        document.querySelectorAll('.quick-filter-chip').forEach(c => c.classList.remove('active'));
+
         if (riverSearchInput) riverSearchInput.value = q;
+        if (mapFloatingSearchInput) mapFloatingSearchInput.value = q;
         if (clearSearchBtn) clearSearchBtn.classList.remove('hidden');
+        if (clearFloatingSearchBtn) clearFloatingSearchBtn.classList.remove('hidden');
         searchQuery = q.toLowerCase();
         if (searchSuggestions) searchSuggestions.classList.add('hidden');
+        if (floatingSearchSuggestions) floatingSearchSuggestions.classList.add('hidden');
         applyFilters();
         if (filteredRivers.length > 0) {
           focusRiverOnMap(filteredRivers[0]);
+          updateFloatingRiverCard(filteredRivers[0]);
         }
       });
     });
@@ -965,7 +1028,7 @@
   // Google Maps-Grade Geolocation & Nearest River Detection
   function locateUser() {
     if (!navigator.geolocation) {
-      alert('আপনার ব্রাউজারে Geolocation সমর্থিত নয়।');
+      showToast('আপনার ব্রাউজারে Geolocation সমর্থিত নয়।');
       return;
     }
 
@@ -1032,7 +1095,7 @@
       },
       (err) => {
         if (floatingLocateBtn) floatingLocateBtn.innerHTML = '<i class="fa-solid fa-crosshairs"></i>';
-        alert('আপনার ভৌগোলিক অবস্থান পাওয়া যায়নি (' + (err.message || 'অনুমতি বাতিল') + ')।');
+        showToast('আপনার ভৌগোলিক অবস্থান পাওয়া যায়নি বা অনুমতি দেওয়া হয়নি।');
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
@@ -1083,6 +1146,9 @@
 
         let score = 0;
 
+        const cleanEn = cleanTransliteration(nameEn);
+        const cleanQ = cleanTransliteration(q);
+
         // Exact Name Match (Highest priority)
         if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী') {
           score = 10000;
@@ -1090,17 +1156,38 @@
           score = 5000;
         } else if (nameEn.includes(q) || nameBn.includes(q)) {
           score = 2000;
+        } else if (cleanQ.length >= 3 && cleanEn === cleanQ) {
+          score = 1800; // e.g. "sitalakhya" matches "shitalakshya", "megna" matches "meghna", "burigonga" matches "buriganga"
+        } else if (cleanQ.length >= 3 && cleanEn.startsWith(cleanQ)) {
+          score = 1500;
+        } else if (cleanQ.length >= 4 && cleanEn.includes(cleanQ)) {
+          score = 1200;
         } else {
-          // Broad matching in other attributes
-          const districts = (r.districts || []).join(' ').toLowerCase();
-          const origin = (r.origin_bn || '').toLowerCase();
-          const outfall = (r.outfall_bn || '').toLowerCase();
-          const flow = (r.flow_path || '').toLowerCase();
+          // Word-level Levenshtein edit distance for spelling mistakes
+          if (q.length >= 4) {
+            const words = nameEn.split(/[\s()]+/);
+            for (const w of words) {
+              if (w.length >= 4 && Math.abs(w.length - q.length) <= 2) {
+                const d = levenshteinDist(q, w);
+                if (d <= 2) {
+                  score = Math.max(score, 1000 - d * 200);
+                }
+              }
+            }
+          }
 
-          if (districts.includes(q)) {
-            score = 500;
-          } else if (origin.includes(q) || outfall.includes(q) || flow.includes(q)) {
-            score = 100;
+          if (score === 0) {
+            // Broad matching in other attributes
+            const districts = (r.districts || []).join(' ').toLowerCase();
+            const origin = (r.origin_bn || '').toLowerCase();
+            const outfall = (r.outfall_bn || '').toLowerCase();
+            const flow = (r.flow_path || '').toLowerCase();
+
+            if (districts.includes(q)) {
+              score = 500;
+            } else if (origin.includes(q) || outfall.includes(q) || flow.includes(q)) {
+              score = 100;
+            }
           }
         }
 
@@ -1136,7 +1223,13 @@
     selectedStatus = 'all';
 
     if (riverSearchInput) riverSearchInput.value = '';
+    if (mapFloatingSearchInput) mapFloatingSearchInput.value = '';
     if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+    if (clearFloatingSearchBtn) clearFloatingSearchBtn.classList.add('hidden');
+    if (searchSuggestions) searchSuggestions.classList.add('hidden');
+    if (floatingSearchSuggestions) floatingSearchSuggestions.classList.add('hidden');
+    if (mapFloatingRiverCard) mapFloatingRiverCard.classList.add('hidden');
+
     if (filterBasin) filterBasin.value = 'all';
     if (filterDivision) filterDivision.value = 'all';
     if (filterTransboundary) filterTransboundary.value = 'all';

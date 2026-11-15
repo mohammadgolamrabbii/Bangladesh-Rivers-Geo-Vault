@@ -1798,3 +1798,55 @@ html.light .active-flow-banner {
 .map-card.fullscreen .leaflet-map-box {
   height: calc(100vh - 100px) !important;
 }
+
+
+/* Mobile Responsive Refinements for Map HUD & Controls */
+@media (max-width: 768px) {
+  .leaflet-map-box {
+    height: 480px !important;
+  }
+
+  .map-floating-hud {
+    width: calc(100% - 64px) !important;
+    top: 10px !important;
+    left: 10px !important;
+  }
+
+  .floating-search-bar {
+    padding: 6px 12px !important;
+  }
+
+  .floating-search-input {
+    font-size: 0.82rem !important;
+  }
+
+  .map-floating-controls {
+    top: 10px !important;
+    right: 10px !important;
+    gap: 6px !important;
+  }
+
+  .map-fab-btn {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 0.88rem !important;
+  }
+
+  .map-floating-card {
+    width: calc(100% - 20px) !important;
+    left: 10px !important;
+    bottom: 10px !important;
+    max-height: 220px !important;
+    overflow-y: auto !important;
+    padding: 12px !important;
+  }
+
+  .floating-river-title {
+    font-size: 1rem !important;
+  }
+
+  .leaflet-bottom.leaflet-right {
+    margin-bottom: 25px !important;
+    margin-right: 10px !important;
+  }
+}
