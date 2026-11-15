@@ -164,15 +164,25 @@
       <div class="search-bar-row">
         <div class="search-input-wrapper">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input type="text" id="riverSearchInput" class="search-input" placeholder="নদীর নাম লিখুন বাংলায় বা ইংরেজিতে (যেমন: balu, turag, padma, হালদা, সুরমা)..." autocomplete="off">
+          <input type="text" id="riverSearchInput" class="search-input" placeholder="নদীর নাম লিখুন (যেমন: balu, তুরাগ, পদ্মা, হালদা, সুরমা, খোয়াই)..." autocomplete="off" spellcheck="false">
           <button id="clearSearchBtn" class="clear-search-btn hidden" title="সার্চ মুছুন"><i class="fa-solid fa-xmark"></i></button>
+          <!-- Live Instant Autocomplete Dropdown -->
+          <div id="searchSuggestions" class="search-suggestions-dropdown hidden" role="listbox"></div>
         </div>
 
-        <div class="search-options-row">
-          <label class="strict-search-label">
-            <input type="checkbox" id="strictNameToggle" checked>
-            <span><i class="fa-solid fa-bullseye"></i> শুধুমাত্র নদীর নামে অনুসন্ধান (Strict River Name Match — যেমন 'balu' লিখলে শুধু বালু নদী আসবে)</span>
-          </label>
+        <div class="search-quick-tags">
+          <span class="quick-tag-label"><i class="fa-solid fa-bolt"></i> জনপ্রিয় নদী:</span>
+          <button type="button" class="quick-tag-btn" data-query="balu">বালু (Balu)</button>
+          <button type="button" class="quick-tag-btn" data-query="পদ্মা">পদ্মা</button>
+          <button type="button" class="quick-tag-btn" data-query="মেঘনা">মেঘনা</button>
+          <button type="button" class="quick-tag-btn" data-query="যমুনা">যমুনা</button>
+          <button type="button" class="quick-tag-btn" data-query="তুরাগ">তুরাগ</button>
+          <button type="button" class="quick-tag-btn" data-query="শীতলক্ষ্যা">শীতলক্ষ্যা</button>
+          <button type="button" class="quick-tag-btn" data-query="কর্ণফুলী">কর্ণফুলী</button>
+          <button type="button" class="quick-tag-btn" data-query="হালদা">হালদা</button>
+          <button type="button" class="quick-tag-btn" data-query="তিস্তা">তিস্তা</button>
+          <button type="button" class="quick-tag-btn" data-query="সুরমা">সুরমা</button>
+          <button type="button" class="quick-tag-btn" data-query="খোয়াই">খোয়াই</button>
         </div>
 
         <div class="quick-filters-row">
@@ -243,8 +253,11 @@
             <button class="basemap-btn" data-layer="esriSat" title="Esri হাই-ডেফিনিশন স্যাটেলাইট"><i class="fa-solid fa-satellite"></i> Esri স্যাটেলাইট</button>
             <button class="basemap-btn" data-layer="osm" title="ওপেনস্ট্রিটম্যাপ"><i class="fa-solid fa-earth-asia"></i> ওপেনস্ট্রিটম্যাপ</button>
           </div>
-          <button id="resetMapBtn" class="btn btn-sm btn-secondary">
+          <button id="resetMapBtn" class="btn btn-sm btn-secondary" title="পুরো বাংলাদেশ ম্যাপে ফিরে যান">
             <i class="fa-solid fa-compress"></i> বাংলাদেশ ভিউ
+          </button>
+          <button id="fullscreenMapBtn" class="btn btn-sm btn-outline" title="পুরো স্ক্রিনজুড়ে ম্যাপ দেখুন">
+            <i class="fa-solid fa-expand"></i> ফুলস্ক্রিন
           </button>
         </div>
       </div>
