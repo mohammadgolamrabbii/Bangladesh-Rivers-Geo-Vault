@@ -37,7 +37,9 @@
   const activeFlowBanner = document.getElementById('activeFlowBanner');
   const riverSearchInput = document.getElementById('riverSearchInput');
   const clearSearchBtn = document.getElementById('clearSearchBtn');
-  const strictNameToggle = document.getElementById('strictNameToggle');
+  const searchSuggestions = document.getElementById('searchSuggestions');
+  const fullscreenMapBtn = document.getElementById('fullscreenMapBtn');
+  const mapSection = document.getElementById('mapSection');
   const filterBasin = document.getElementById('filterBasin');
   const filterDivision = document.getElementById('filterDivision');
   const filterTransboundary = document.getElementById('filterTransboundary');
@@ -53,6 +55,8 @@
   const modalBody = document.getElementById('modalBody');
   const toast = document.getElementById('toast');
   const toastMessage = document.getElementById('toastMessage');
+
+  let activeSuggestionIndex = -1;
 
   // Initialize
   function init() {
@@ -304,7 +308,7 @@
       lineJoin: 'round'
     }).addTo(map);
 
-    // Origin Marker (Green Pin)
+    // Origin Marker (Green Pin) with Permanent Floating Tooltip
     const originPt = riverCoords[0];
     const originMarker = L.circleMarker(originPt, {
       radius: 9,
@@ -313,9 +317,16 @@
       weight: 2.5,
       opacity: 1,
       fillOpacity: 1
-    }).bindPopup(`<strong>উৎস (Origin):</strong> ${river.origin_bn || river.origin_en}<br>নদী: ${river.name_bn} (${river.name_en})`).addTo(flowMarkerGroup);
+    }).bindPopup(`<strong>উৎস (Origin):</strong> ${river.origin_bn || river.origin_en}<br>নদী: ${river.name_bn} (${river.name_en})`)
+      .bindTooltip(`🟢 উৎস: ${river.origin_bn || river.origin_en}`, {
+        permanent: true,
+        direction: 'top',
+        className: 'origin-flow-tooltip',
+        offset: [0, -8]
+      })
+      .addTo(flowMarkerGroup);
 
-    // Outfall Marker (Red Pin)
+    // Outfall Marker (Red Pin) with Permanent Floating Tooltip
     const outfallPt = riverCoords[riverCoords.length - 1];
     const outfallMarker = L.circleMarker(outfallPt, {
       radius: 9,
@@ -324,10 +335,29 @@
       weight: 2.5,
       opacity: 1,
       fillOpacity: 1
-    }).bindPopup(`<strong>পতন / মোহনা (Outfall):</strong> ${river.outfall_bn || river.outfall_en}<br>দৈর্ঘ্য: ${river.length_km} কিমি`).addTo(flowMarkerGroup);
+    }).bindPopup(`<strong>পতন / মোহনা (Outfall):</strong> ${river.outfall_bn || river.outfall_en}<br>দৈর্ঘ্য: ${river.length_km} কিমি`)
+      .bindTooltip(`🔴 পতন: ${river.outfall_bn || river.outfall_en}`, {
+        permanent: true,
+        direction: 'bottom',
+        className: 'outfall-flow-tooltip',
+        offset: [0, 8]
+      })
+      .addTo(flowMarkerGroup);
 
-    // Fit map bounds to show complete flow path with padding
-    map.fitBounds(highlightedPolyline.getBounds(), { padding: [50, 50], maxZoom: 13 });
+    // Smart Close-up Zoom: Invalidate size and fly smoothly to river bounds with optimal zoom
+    if (map) {
+      map.invalidateSize();
+      const bounds = highlightedPolyline.getBounds();
+      if (bounds.isValid()) {
+        setTimeout(() => {
+          map.flyToBounds(bounds, {
+            padding: [60, 60],
+            maxZoom: 13,
+            duration: 1.2
+          });
+        }, 50);
+      }
+    }
 
     // Update active banner and selected river text
     if (selectedRiverText) {
@@ -336,11 +366,14 @@
 
     if (activeFlowBanner) {
       activeFlowBanner.innerHTML = `
-        <div>
-          <i class="fa-solid fa-water"></i> <strong>${river.name_bn} (${river.name_en})</strong> নদীর আসল ও সম্পূর্ণ <strong>${river.length_km} কিমি</strong> প্রাকৃতিক গতিপথ (গুগল ম্যাপস ও স্যাটেলাইট ভিউ) প্রদর্শিত হচ্ছে।
-          <span style="font-size:0.82rem; opacity:0.9; margin-left:8px;">[উৎস: ${river.origin_bn} ➔ পতন: ${river.outfall_bn}]</span>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <i class="fa-solid fa-water"></i> <strong>${river.name_bn} (${river.name_en})</strong> নদীর সম্পূর্ণ <strong>${river.length_km} কিমি</strong> গতিপথ প্রদর্শিত হচ্ছে।
+          <span style="font-size:0.82rem; opacity:0.9;">[উৎস: ${river.origin_bn} ➔ পতন: ${river.outfall_bn}]</span>
         </div>
-        <button class="btn btn-sm btn-outline" onclick="window.BD_RIVERS_APP.resetMapView()" style="padding:2px 8px; font-size:0.75rem;"><i class="fa-solid fa-xmark"></i> বন্ধ করুন</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="btn btn-sm btn-primary" onclick="window.BD_RIVERS_APP.zoomToActiveRiver()" style="padding:4px 10px; font-size:0.75rem;"><i class="fa-solid fa-magnifying-glass-plus"></i> ক্লোজ-আপ জুম</button>
+          <button class="btn btn-sm btn-outline" onclick="window.BD_RIVERS_APP.resetMapView()" style="padding:4px 8px; font-size:0.75rem;"><i class="fa-solid fa-xmark"></i> বন্ধ করুন</button>
+        </div>
       `;
       activeFlowBanner.classList.remove('hidden');
     }
@@ -357,11 +390,6 @@
     const btn2 = document.getElementById('themeToggleBtn');
     if (btn1) btn1.addEventListener('click', toggleTheme);
     if (btn2) btn2.addEventListener('click', toggleTheme);
-
-    // Strict name match toggle
-    if (strictNameToggle) {
-      strictNameToggle.addEventListener('change', applyFilters);
-    }
 
     // Basemap Switcher Buttons (Google Satellite, Google Maps, Esri, OSM)
     document.querySelectorAll('.basemap-btn').forEach(btn => {
@@ -385,7 +413,22 @@
       resetMapBtn.addEventListener('click', resetMapView);
     }
 
-    // Search Input with Debounce
+    // Fullscreen Map Toggle Button
+    if (fullscreenMapBtn && mapSection) {
+      fullscreenMapBtn.addEventListener('click', () => {
+        const isFullscreen = mapSection.classList.toggle('fullscreen');
+        if (isFullscreen) {
+          fullscreenMapBtn.innerHTML = '<i class="fa-solid fa-compress"></i> বন্ধ করুন';
+        } else {
+          fullscreenMapBtn.innerHTML = '<i class="fa-solid fa-expand"></i> ফুলস্ক্রিন';
+        }
+        setTimeout(() => {
+          if (map) map.invalidateSize();
+        }, 120);
+      });
+    }
+
+    // Search Input with Debounce & Live Autocomplete
     let searchTimeout;
     if (riverSearchInput) {
       riverSearchInput.addEventListener('input', (e) => {
@@ -393,12 +436,48 @@
         const val = e.target.value.trim();
         if (clearSearchBtn) clearSearchBtn.classList.toggle('hidden', val.length === 0);
 
+        // Show instant live autocomplete suggestions
+        renderAutocomplete(val);
+
         searchTimeout = setTimeout(() => {
           searchQuery = val.toLowerCase();
           applyFilters();
         }, 120);
       });
+
+      // Keyboard navigation for autocomplete suggestions
+      riverSearchInput.addEventListener('keydown', (e) => {
+        if (!searchSuggestions || searchSuggestions.classList.contains('hidden')) return;
+        const items = searchSuggestions.querySelectorAll('.suggestion-item');
+        if (items.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
+          items.forEach((it, i) => it.classList.toggle('active', i === activeSuggestionIndex));
+          items[activeSuggestionIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeSuggestionIndex = (activeSuggestionIndex - 1 + items.length) % items.length;
+          items.forEach((it, i) => it.classList.toggle('active', i === activeSuggestionIndex));
+          items[activeSuggestionIndex].scrollIntoView({ block: 'nearest' });
+        } else if (e.key === 'Enter') {
+          if (activeSuggestionIndex >= 0 && activeSuggestionIndex < items.length) {
+            e.preventDefault();
+            items[activeSuggestionIndex].click();
+          }
+        } else if (e.key === 'Escape') {
+          searchSuggestions.classList.add('hidden');
+        }
+      });
     }
+
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', (e) => {
+      if (searchSuggestions && !searchSuggestions.contains(e.target) && e.target !== riverSearchInput) {
+        searchSuggestions.classList.add('hidden');
+      }
+    });
 
     // Clear Search Button
     if (clearSearchBtn) {
@@ -406,11 +485,27 @@
         if (riverSearchInput) riverSearchInput.value = '';
         clearSearchBtn.classList.add('hidden');
         searchQuery = '';
+        if (searchSuggestions) searchSuggestions.classList.add('hidden');
         resetMapView();
         applyFilters();
         if (riverSearchInput) riverSearchInput.focus();
       });
     }
+
+    // Quick Search Tags
+    document.querySelectorAll('.quick-tag-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const q = btn.getAttribute('data-query');
+        if (riverSearchInput) riverSearchInput.value = q;
+        if (clearSearchBtn) clearSearchBtn.classList.remove('hidden');
+        searchQuery = q.toLowerCase();
+        if (searchSuggestions) searchSuggestions.classList.add('hidden');
+        applyFilters();
+        if (filteredRivers.length > 0) {
+          focusRiverOnMap(filteredRivers[0]);
+        }
+      });
+    });
 
     // Dropdown Filters
     if (filterBasin) filterBasin.addEventListener('change', (e) => { selectedBasin = e.target.value; applyFilters(); });
@@ -507,11 +602,121 @@
     }
   }
 
-  // Apply filters with Smart Scoring and Strict Name Toggle
-  function applyFilters() {
-    const isStrict = strictNameToggle ? strictNameToggle.checked : true;
-    const q = searchQuery.toLowerCase().trim();
+  // Zoom directly into current active river bounds
+  function zoomToActiveRiver() {
+    if (highlightedPolyline && map) {
+      map.invalidateSize();
+      const bounds = highlightedPolyline.getBounds();
+      if (bounds.isValid()) {
+        map.flyToBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 14,
+          duration: 1.2
+        });
+      }
+    }
+  }
 
+  // Live Instant Autocomplete Dropdown
+  function renderAutocomplete(query) {
+    if (!searchSuggestions) return;
+    const q = (query || '').toLowerCase().trim();
+    if (!q || q.length < 1) {
+      searchSuggestions.innerHTML = '';
+      searchSuggestions.classList.add('hidden');
+      activeSuggestionIndex = -1;
+      return;
+    }
+
+    const matches = [];
+    allRivers.forEach(r => {
+      const nameEn = (r.name_en || '').toLowerCase();
+      const nameBn = (r.name_bn || '').toLowerCase();
+      let score = 0;
+      if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী') {
+        score = 10000;
+      } else if (nameEn.startsWith(q) || nameBn.startsWith(q)) {
+        score = 5000;
+      } else if (nameEn.includes(q) || nameBn.includes(q)) {
+        score = 2000;
+      } else {
+        const districts = (r.districts || []).join(' ').toLowerCase();
+        if (districts.includes(q)) score = 500;
+      }
+      if (score > 0) matches.push({ river: r, score });
+    });
+
+    matches.sort((a, b) => b.score - a.score);
+    const topMatches = matches.slice(0, 8);
+
+    if (topMatches.length === 0) {
+      searchSuggestions.innerHTML = `<div style="padding: 14px 18px; color: var(--text-muted); font-size: 0.9rem;"><i class="fa-solid fa-circle-question"></i> কোনো নদী পাওয়া যায়নি। বানানের সঠিক রূপ চেষ্টা করুন (যেমন: balu, তুরাগ, পদ্মা)।</div>`;
+      searchSuggestions.classList.remove('hidden');
+      return;
+    }
+
+    searchSuggestions.innerHTML = topMatches.map((item, idx) => {
+      const r = item.river;
+      const isEndangered = (r.status || '').includes('বিপন্ন') || (r.status || '').includes('ভরাট');
+      const badgeStyle = isEndangered 
+        ? 'background: rgba(244,63,94,0.15); color: #f43f5e; border-color: rgba(244,63,94,0.3);' 
+        : 'background: rgba(16,185,129,0.15); color: #10b981; border-color: rgba(16,185,129,0.3);';
+
+      return `
+        <div class="suggestion-item" data-index="${idx}" data-id="${r.id}" role="option">
+          <div class="suggestion-item-main">
+            <div class="suggestion-name">
+              <span>${r.name_bn}</span>
+              <span class="suggestion-en">${r.name_en}</span>
+              ${r.transboundary ? '<span style="font-size:0.7rem; color:#38bdf8; font-weight:600;"><i class="fa-solid fa-flag"></i> অভিন্ন নদী</span>' : ''}
+            </div>
+            <div class="suggestion-meta">
+              <span><i class="fa-solid fa-location-dot"></i> ${(r.districts || []).slice(0, 3).join(', ')}</span>
+              <span>&bull;</span>
+              <span><i class="fa-solid fa-water"></i> ${r.basin}</span>
+            </div>
+          </div>
+          <div class="suggestion-badges">
+            <span class="suggestion-badge">${r.length_km} কিমি</span>
+            <span class="suggestion-badge" style="${badgeStyle}">${r.status}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    searchSuggestions.classList.remove('hidden');
+    activeSuggestionIndex = -1;
+
+    // Attach click listeners to suggestions
+    searchSuggestions.querySelectorAll('.suggestion-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = item.getAttribute('data-id');
+        const river = allRivers.find(x => x.id === id);
+        if (river) {
+          selectRiverFromSuggestion(river);
+        }
+      });
+    });
+  }
+
+  function selectRiverFromSuggestion(river) {
+    if (riverSearchInput) {
+      riverSearchInput.value = river.name_bn;
+    }
+    if (clearSearchBtn) {
+      clearSearchBtn.classList.remove('hidden');
+    }
+    searchQuery = river.name_bn.toLowerCase();
+    if (searchSuggestions) {
+      searchSuggestions.classList.add('hidden');
+    }
+    applyFilters();
+    focusRiverOnMap(river);
+  }
+
+  // Apply filters with Smart Relevance Scoring
+  function applyFilters() {
+    const q = searchQuery.toLowerCase().trim();
     const scoredResults = [];
 
     allRivers.forEach(r => {
@@ -534,16 +739,18 @@
         } else if (nameEn.startsWith(q) || nameBn.startsWith(q)) {
           score = 5000;
         } else if (nameEn.includes(q) || nameBn.includes(q)) {
-          score = 1000;
-        } else if (!isStrict) {
+          score = 2000;
+        } else {
           // Broad matching in other attributes
+          const districts = (r.districts || []).join(' ').toLowerCase();
           const origin = (r.origin_bn || '').toLowerCase();
           const outfall = (r.outfall_bn || '').toLowerCase();
           const flow = (r.flow_path || '').toLowerCase();
-          const districts = (r.districts || []).join(' ').toLowerCase();
 
-          if (origin.includes(q) || outfall.includes(q) || flow.includes(q) || districts.includes(q)) {
-            score = 50;
+          if (districts.includes(q)) {
+            score = 500;
+          } else if (origin.includes(q) || outfall.includes(q) || flow.includes(q)) {
+            score = 100;
           }
         }
 
@@ -823,6 +1030,7 @@
       const r = allRivers.find(x => x.id === id);
       if (r) focusRiverOnMap(r);
     },
+    zoomToActiveRiver: zoomToActiveRiver,
     resetMapView: resetMapView
   };
 
