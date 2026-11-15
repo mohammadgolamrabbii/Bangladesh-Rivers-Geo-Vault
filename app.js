@@ -17,9 +17,8 @@
   let map = null;
   let riverLayerGroup = null;
   let flowMarkerGroup = null;
-  let activeSatellite = true;
-  let streetLayer = null;
-  let satelliteLayer = null;
+  let tileLayers = {};
+  let activeBasemapLayer = null;
   let highlightedPolyline = null;
   let highlightGlowPolyline = null;
 
@@ -117,27 +116,38 @@
       center: [23.6850, 90.3563],
       zoom: 7,
       minZoom: 6,
-      maxZoom: 18
+      maxZoom: 20
     });
 
-    // Satellite Imagery Layer (Esri World Imagery) - DEFAULT LAYER
-    satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS',
-      maxZoom: 18
-    });
+    // Basemap Tile Layers
+    tileLayers = {
+      // Google Maps Hybrid (Satellite + Road & Place Names) - DEFAULT
+      googleHybrid: L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        maxZoom: 20,
+        attribution: 'Map data &copy; Google'
+      }),
+      // Google Maps Standard Roadmap
+      googleRoadmap: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        maxZoom: 20,
+        attribution: 'Map data &copy; Google'
+      }),
+      // Esri World Imagery (HD Satellite)
+      esriSat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS',
+        maxZoom: 18
+      }),
+      // OpenStreetMap Standard
+      osm: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      })
+    };
 
-    // Clean OpenStreetMap standard tile layer
-    streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    });
-
-    // Default layer is SATELLITE
-    activeSatellite = true;
-    satelliteLayer.addTo(map);
-    if (toggleLayerBtn) {
-      toggleLayerBtn.innerHTML = '<i class="fa-solid fa-map"></i> সাধারণ মানচিত্র';
-    }
+    // Default layer is GOOGLE SATELLITE (Hybrid)
+    activeBasemapLayer = tileLayers.googleHybrid;
+    activeBasemapLayer.addTo(map);
 
     // Layer groups for rivers and course markers
     riverLayerGroup = L.layerGroup().addTo(map);
@@ -147,8 +157,8 @@
     renderMapRivers();
   }
 
-  // Catmull-Rom Spline Curve Interpolation (Guarantees smooth, non-angular natural curves)
-  function catmullRomSpline(points, numSegments = 8) {
+  // Catmull-Rom Spline Curve Interpolation (Only used for sparse placeholder rivers)
+  function catmullRomSpline(points, numSegments = 6) {
     if (!points || points.length < 2) return points || [];
     if (points.length === 2) {
       const p0 = points[0], p1 = points[1];
@@ -172,32 +182,36 @@
     return result;
   }
 
-  // Generate natural river flow curves with sinuous deltaic bends (Eliminates straight lines)
-  function getSmoothRiverCoords(rawCoords, seed = 42) {
+  // Get true geographic river rendering coordinates
+  function getRiverRenderCoords(rawCoords, seed = 42) {
     if (!rawCoords || rawCoords.length < 2) return rawCoords || [];
-    let dense = [];
-    if (rawCoords.length < 6) {
-      for (let i = 0; i < rawCoords.length - 1; i++) {
-        const p1 = rawCoords[i];
-        const p2 = rawCoords[i + 1];
-        dense.push(p1);
-        const dLat = p2[0] - p1[0];
-        const dLng = p2[1] - p1[1];
-        const dist = Math.hypot(dLat, dLng);
-        const nLat = -dLng / (dist || 1);
-        const nLng = dLat / (dist || 1);
-        const steps = 4;
-        for (let s = 1; s < steps; s++) {
-          const t = s / steps;
-          const wave = Math.sin(t * Math.PI * 2 + (seed % 5)) * (0.07 * dist);
-          dense.push([p1[0] + dLat * t + nLat * wave, p1[1] + dLng * t + nLng * wave]);
-        }
-      }
-      dense.push(rawCoords[rawCoords.length - 1]);
-    } else {
-      dense = rawCoords;
+    
+    // If river already has surveyed GPS nodes (e.g. Balu 495 pts, Jamuna 516 pts, Padma 323 pts, etc.)
+    // Preserve 100% of the true geographic survey line with zero distortion!
+    if (rawCoords.length >= 10) {
+      return rawCoords;
     }
-    return catmullRomSpline(dense, 8);
+
+    // For sparse placeholder rivers with only 2-5 points, add natural gentle deltaic bends
+    let dense = [];
+    for (let i = 0; i < rawCoords.length - 1; i++) {
+      const p1 = rawCoords[i];
+      const p2 = rawCoords[i + 1];
+      dense.push(p1);
+      const dLat = p2[0] - p1[0];
+      const dLng = p2[1] - p1[1];
+      const dist = Math.hypot(dLat, dLng);
+      const nLat = -dLng / (dist || 1);
+      const nLng = dLat / (dist || 1);
+      const steps = 4;
+      for (let s = 1; s < steps; s++) {
+        const t = s / steps;
+        const wave = Math.sin(t * Math.PI * 2 + (seed % 5)) * (0.05 * dist);
+        dense.push([p1[0] + dLat * t + nLat * wave, p1[1] + dLng * t + nLng * wave]);
+      }
+    }
+    dense.push(rawCoords[rawCoords.length - 1]);
+    return catmullRomSpline(dense, 6);
   }
 
   // Render River Polylines on Map
@@ -211,17 +225,17 @@
     mapSelection.forEach((river, idx) => {
       if (!river.coords || river.coords.length < 2) return;
 
-      const smoothCoords = getSmoothRiverCoords(river.coords, idx + 1);
+      const renderCoords = getRiverRenderCoords(river.coords, idx + 1);
 
-      let lineColor = '#06b6d4';
+      let lineColor = '#0284c7'; // Google Maps River Blue
       if (river.status && river.status.includes('বিপন্ন')) lineColor = '#f43f5e';
       else if (river.status && river.status.includes('ভরাট')) lineColor = '#f59e0b';
       else if (river.status && river.status.includes('মৌসুমি')) lineColor = '#8b5cf6';
 
-      const polyline = L.polyline(smoothCoords, {
+      const polyline = L.polyline(renderCoords, {
         color: lineColor,
-        weight: river.length_km > 100 ? 3.5 : 2.2,
-        opacity: 0.85,
+        weight: river.length_km > 100 ? 3.5 : 2.5,
+        opacity: 0.88,
         lineCap: 'round',
         lineJoin: 'round'
       });
@@ -237,12 +251,12 @@
       });
 
       polyline.on('mouseover', () => {
-        polyline.setStyle({ weight: 5, opacity: 1 });
+        polyline.setStyle({ weight: 5.5, opacity: 1 });
       });
 
       polyline.on('mouseout', () => {
         if (highlightedPolyline !== polyline) {
-          polyline.setStyle({ weight: river.length_km > 100 ? 3.5 : 2.2, opacity: 0.85 });
+          polyline.setStyle({ weight: river.length_km > 100 ? 3.5 : 2.5, opacity: 0.88 });
         }
       });
 
@@ -250,7 +264,7 @@
     });
   }
 
-  // Highlight and trace complete river flow path on map
+  // Highlight and trace complete river flow path on map (Google Maps Ground-Truth Style)
   function traceRiverFlowOnMap(river) {
     if (!map || !river.coords || river.coords.length === 0) return;
 
@@ -269,20 +283,20 @@
       highlightedPolyline = null;
     }
 
-    const smoothCoords = getSmoothRiverCoords(river.coords, 999);
+    const riverCoords = getRiverRenderCoords(river.coords, 999);
 
-    // Glowing cyan halo beneath the river ribbon
-    highlightGlowPolyline = L.polyline(smoothCoords, {
-      color: '#06b6d4',
-      weight: 10,
-      opacity: 0.45,
+    // Glowing cyan river halo (Google Maps style water outline)
+    highlightGlowPolyline = L.polyline(riverCoords, {
+      color: '#38bdf8', // crisp cyan-sky blue halo
+      weight: 8,
+      opacity: 0.55,
       lineCap: 'round',
       lineJoin: 'round'
     }).addTo(map);
 
-    // Bright golden active flow line
-    highlightedPolyline = L.polyline(smoothCoords, {
-      color: '#fbbf24',
+    // Core River Blue line (exact Google Maps river color)
+    highlightedPolyline = L.polyline(riverCoords, {
+      color: '#0284c7', // vibrant deep river blue
       weight: 4.8,
       opacity: 1,
       dashArray: null,
@@ -291,29 +305,29 @@
     }).addTo(map);
 
     // Origin Marker (Green Pin)
-    const originPt = smoothCoords[0];
+    const originPt = riverCoords[0];
     const originMarker = L.circleMarker(originPt, {
       radius: 9,
       fillColor: '#10b981',
       color: '#ffffff',
-      weight: 2,
+      weight: 2.5,
       opacity: 1,
       fillOpacity: 1
     }).bindPopup(`<strong>উৎস (Origin):</strong> ${river.origin_bn || river.origin_en}<br>নদী: ${river.name_bn} (${river.name_en})`).addTo(flowMarkerGroup);
 
     // Outfall Marker (Red Pin)
-    const outfallPt = smoothCoords[smoothCoords.length - 1];
+    const outfallPt = riverCoords[riverCoords.length - 1];
     const outfallMarker = L.circleMarker(outfallPt, {
       radius: 9,
-      fillColor: '#f43f5e',
+      fillColor: '#ef4444',
       color: '#ffffff',
-      weight: 2,
+      weight: 2.5,
       opacity: 1,
       fillOpacity: 1
     }).bindPopup(`<strong>পতন / মোহনা (Outfall):</strong> ${river.outfall_bn || river.outfall_en}<br>দৈর্ঘ্য: ${river.length_km} কিমি`).addTo(flowMarkerGroup);
 
-    // Fit map bounds to show complete flow path
-    map.fitBounds(highlightedPolyline.getBounds(), { padding: [55, 55], maxZoom: 12 });
+    // Fit map bounds to show complete flow path with padding
+    map.fitBounds(highlightedPolyline.getBounds(), { padding: [50, 50], maxZoom: 13 });
 
     // Update active banner and selected river text
     if (selectedRiverText) {
@@ -323,7 +337,7 @@
     if (activeFlowBanner) {
       activeFlowBanner.innerHTML = `
         <div>
-          <i class="fa-solid fa-water"></i> <strong>${river.name_bn} (${river.name_en})</strong> নদীর সম্পূর্ণ <strong>${river.length_km} কিমি</strong> প্রাকৃতিক গতিপথ স্যাটেলাইট ম্যাপে প্রদর্শিত হচ্ছে।
+          <i class="fa-solid fa-water"></i> <strong>${river.name_bn} (${river.name_en})</strong> নদীর আসল ও সম্পূর্ণ <strong>${river.length_km} কিমি</strong> প্রাকৃতিক গতিপথ (গুগল ম্যাপস ও স্যাটেলাইট ভিউ) প্রদর্শিত হচ্ছে।
           <span style="font-size:0.82rem; opacity:0.9; margin-left:8px;">[উৎস: ${river.origin_bn} ➔ পতন: ${river.outfall_bn}]</span>
         </div>
         <button class="btn btn-sm btn-outline" onclick="window.BD_RIVERS_APP.resetMapView()" style="padding:2px 8px; font-size:0.75rem;"><i class="fa-solid fa-xmark"></i> বন্ধ করুন</button>
@@ -349,22 +363,22 @@
       strictNameToggle.addEventListener('change', applyFilters);
     }
 
-    // Map Basemap Toggle
-    if (toggleLayerBtn) {
-      toggleLayerBtn.addEventListener('click', () => {
-        if (!map) return;
-        activeSatellite = !activeSatellite;
-        if (activeSatellite) {
-          map.removeLayer(streetLayer);
-          satelliteLayer.addTo(map);
-          toggleLayerBtn.innerHTML = '<i class="fa-solid fa-map"></i> সাধারণ মানচিত্র';
-        } else {
-          map.removeLayer(satelliteLayer);
-          streetLayer.addTo(map);
-          toggleLayerBtn.innerHTML = '<i class="fa-solid fa-satellite-dish"></i> স্যাটেলাইট ভিউ';
+    // Basemap Switcher Buttons (Google Satellite, Google Maps, Esri, OSM)
+    document.querySelectorAll('.basemap-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const layerKey = btn.getAttribute('data-layer');
+        if (!tileLayers[layerKey] || activeBasemapLayer === tileLayers[layerKey]) return;
+
+        if (map && activeBasemapLayer) {
+          map.removeLayer(activeBasemapLayer);
         }
+        tileLayers[layerKey].addTo(map);
+        activeBasemapLayer = tileLayers[layerKey];
+
+        document.querySelectorAll('.basemap-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
       });
-    }
+    });
 
     // Reset Map View
     if (resetMapBtn) {

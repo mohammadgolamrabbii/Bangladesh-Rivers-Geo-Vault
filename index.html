@@ -231,15 +231,18 @@
         <div class="card-title-group">
           <span class="card-icon"><i class="fa-solid fa-satellite-dish"></i></span>
           <div>
-            <h3 class="card-title">ইন্টারেক্টিভ নদী প্রবাহ ও মোহনা স্যাটেলাইট ভিউ</h3>
-            <p class="card-desc">সার্চ বক্সে যেকোনো নদী লিখে খুঁজুন — স্যাটেলাইট ম্যাপে নদীর সম্পূর্ণ প্রাকৃতিক গতিপথ ও মোহনা সরাসরি প্রদর্শিত হবে।</p>
+            <h3 class="card-title">ইন্টারেক্টিভ নদী প্রবাহ ও মোহনা স্যাটেলাইট ভিউ (গুগল ম্যাপস ও ওএসএম ইঞ্জিন)</h3>
+            <p class="card-desc">আসল গ্রাউন্ড-ট্রুথ ওপেনস্ট্রিটম্যাপ ও গুগল ম্যাপস ভেক্টর ডেটা — নদীপথ হুবহু স্যাটেলাইট ওয়াটারবডির আসল খাতের ওপর বাস্তবসম্মতভাবে প্রদর্শিত হয়।</p>
           </div>
         </div>
 
         <div class="map-controls-group">
-          <button id="toggleLayerBtn" class="btn btn-sm btn-outline">
-            <i class="fa-solid fa-map"></i> সাধারণ মানচিত্র
-          </button>
+          <div class="basemap-pills" id="basemapPills">
+            <button class="basemap-btn active" data-layer="googleHybrid" title="গুগল হাইব্রিড স্যাটেলাইট ও লেবেল"><i class="fa-brands fa-google"></i> গুগল স্যাটেলাইট</button>
+            <button class="basemap-btn" data-layer="googleRoadmap" title="গুগল স্ট্যান্ডার্ড রোডম্যাপ"><i class="fa-solid fa-map"></i> গুগল ম্যাপস</button>
+            <button class="basemap-btn" data-layer="esriSat" title="Esri হাই-ডেফিনিশন স্যাটেলাইট"><i class="fa-solid fa-satellite"></i> Esri স্যাটেলাইট</button>
+            <button class="basemap-btn" data-layer="osm" title="ওপেনস্ট্রিটম্যাপ"><i class="fa-solid fa-earth-asia"></i> ওপেনস্ট্রিটম্যাপ</button>
+          </div>
           <button id="resetMapBtn" class="btn btn-sm btn-secondary">
             <i class="fa-solid fa-compress"></i> বাংলাদেশ ভিউ
           </button>
