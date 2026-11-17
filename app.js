@@ -49,12 +49,12 @@
     return matrix[b.length][a.length];
   }
 
-
   // Global State
   let allRivers = [];
   let filteredRivers = [];
   let bcsQuestions = [];
   let summaryData = {};
+  let currentRenderLimit = 24;
 
   // Leaflet Map State
   let map = null;
@@ -64,6 +64,8 @@
   let activeBasemapLayer = null;
   let highlightedPolyline = null;
   let highlightGlowPolyline = null;
+  let userGpsMarker = null;
+  let currentlySelectedRiver = null;
 
   // Filter States
   let searchQuery = '';
@@ -71,10 +73,10 @@
   let selectedDivision = 'all';
   let selectedTransboundary = 'all';
   let selectedStatus = 'all';
+  let activeSuggestionIndex = -1;
 
   // DOM Elements
   const riverMapElement = document.getElementById('riverMap');
-  const toggleLayerBtn = document.getElementById('toggleLayerBtn');
   const resetMapBtn = document.getElementById('resetMapBtn');
   const selectedRiverText = document.getElementById('selectedRiverText');
   const activeFlowBanner = document.getElementById('activeFlowBanner');
@@ -84,21 +86,6 @@
   const fullscreenMapBtn = document.getElementById('fullscreenMapBtn');
   const mapSection = document.getElementById('mapSection');
   const filterBasin = document.getElementById('filterBasin');
-  
-  const mapFloatingSearchInput = document.getElementById('mapFloatingSearchInput');
-  const clearFloatingSearchBtn = document.getElementById('clearFloatingSearchBtn');
-  const floatingSearchSuggestions = document.getElementById('floatingSearchSuggestions');
-  const mapFloatingRiverCard = document.getElementById('mapFloatingRiverCard');
-  const floatingLocateBtn = document.getElementById('floatingLocateBtn');
-  const floatingResetBtn = document.getElementById('floatingResetBtn');
-  const floatingFullscreenBtn = document.getElementById('floatingFullscreenBtn');
-  const closeFloatingCardBtn = document.getElementById('closeFloatingCardBtn');
-  const floatingCardZoomBtn = document.getElementById('floatingCardZoomBtn');
-  const floatingCardDetailsBtn = document.getElementById('floatingCardDetailsBtn');
-  let userGpsMarker = null;
-  let currentlySelectedRiver = null;
-  let activeFloatingSuggestionIndex = -1;
-
   const filterDivision = document.getElementById('filterDivision');
   const filterTransboundary = document.getElementById('filterTransboundary');
   const filterStatus = document.getElementById('filterStatus');
@@ -114,7 +101,14 @@
   const toast = document.getElementById('toast');
   const toastMessage = document.getElementById('toastMessage');
 
-  let activeSuggestionIndex = -1;
+  // Floating Controls
+  const mapFloatingRiverCard = document.getElementById('mapFloatingRiverCard');
+  const floatingLocateBtn = document.getElementById('floatingLocateBtn');
+  const floatingResetBtn = document.getElementById('floatingResetBtn');
+  const floatingFullscreenBtn = document.getElementById('floatingFullscreenBtn');
+  const closeFloatingCardBtn = document.getElementById('closeFloatingCardBtn');
+  const floatingCardZoomBtn = document.getElementById('floatingCardZoomBtn');
+  const floatingCardDetailsBtn = document.getElementById('floatingCardDetailsBtn');
 
   // Initialize
   function init() {
@@ -163,17 +157,33 @@
 
   // Setup Data
   function setupData() {
-    allRivers = window.BD_RIVERS_DATA || window.RIVERS_DATA || [];
-    bcsQuestions = window.BD_RIVERS_BCS_QA || window.BCS_QA || [];
-    summaryData = window.BD_RIVERS_SUMMARY || window.RIVERS_SUMMARY || {};
+    allRivers = (typeof window !== 'undefined' && (window.BD_RIVERS_DATA || window.RIVERS_DATA)) ||
+                (typeof RIVERS_DATA !== 'undefined' ? RIVERS_DATA : []);
+    bcsQuestions = (typeof window !== 'undefined' && (window.BD_RIVERS_BCS_QA || window.BCS_QA)) ||
+                   (typeof BCS_QA !== 'undefined' ? BCS_QA : []);
+    summaryData = (typeof window !== 'undefined' && (window.BD_RIVERS_SUMMARY || window.RIVERS_SUMMARY)) ||
+                  (typeof RIVERS_SUMMARY !== 'undefined' ? RIVERS_SUMMARY : {});
     filteredRivers = [...allRivers];
+
+    // Fallback if data array is empty
+    if (allRivers.length === 0 && typeof fetch === 'function') {
+      fetch('data/json/rivers.json')
+        .then(res => res.json())
+        .then(data => {
+          allRivers = data;
+          filteredRivers = [...allRivers];
+          renderRivers();
+          renderMapRivers();
+          updateCount();
+        })
+        .catch(err => console.warn('Local rivers.json fetch skipped:', err));
+    }
   }
 
   // Initialize Leaflet Map
   function initMap() {
     if (!riverMapElement || typeof L === 'undefined') return;
 
-    // Center on Bangladesh
     map = L.map('riverMap', {
       center: [23.6850, 90.3563],
       zoom: 7,
@@ -183,15 +193,13 @@
       zoomDelta: 0.5,
       wheelPxPerZoomLevel: 100,
       wheelDebounceTime: 40,
-      zoomControl: false // Disable default top-left zoom control to prevent overlap with floating search HUD
+      zoomControl: false
     });
 
-    // Add Google Maps-grade Bottom-Right Zoom Controls (unobstructed by search bar!)
     L.control.zoom({
       position: 'bottomright'
     }).addTo(map);
 
-    // Dynamic Metric Scale Bar (Google Maps benchmark)
     L.control.scale({
       metric: true,
       imperial: false,
@@ -201,43 +209,35 @@
 
     // Basemap Tile Layers
     tileLayers = {
-      // Google Maps Hybrid (Satellite + Road & Place Names) - DEFAULT
       googleHybrid: L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
         subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
         maxZoom: 20,
         attribution: 'Map data &copy; Google'
       }),
-      // Google Maps Standard Roadmap
       googleRoadmap: L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
         subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
         maxZoom: 20,
         attribution: 'Map data &copy; Google'
       }),
-      // Esri World Imagery (HD Satellite)
       esriSat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS',
         maxZoom: 18
       }),
-      // OpenStreetMap Standard
       osm: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19
       })
     };
 
-    // Default layer is GOOGLE SATELLITE (Hybrid)
     activeBasemapLayer = tileLayers.googleHybrid;
     activeBasemapLayer.addTo(map);
 
-    // Layer groups for rivers and course markers
     riverLayerGroup = L.layerGroup().addTo(map);
     flowMarkerGroup = L.layerGroup().addTo(map);
 
-    // Render river lines on map
     renderMapRivers();
   }
 
-  // Catmull-Rom Spline Curve Interpolation (Only used for sparse placeholder rivers)
   function catmullRomSpline(points, numSegments = 6) {
     if (!points || points.length < 2) return points || [];
     if (points.length === 2) {
@@ -262,17 +262,11 @@
     return result;
   }
 
-  // Get true geographic river rendering coordinates
   function getRiverRenderCoords(rawCoords, seed = 42) {
     if (!rawCoords || rawCoords.length < 2) return rawCoords || [];
-    
-    // If river already has surveyed GPS nodes (e.g. Balu 495 pts, Jamuna 516 pts, Padma 323 pts, etc.)
-    // Preserve 100% of the true geographic survey line with zero distortion!
     if (rawCoords.length >= 10) {
       return rawCoords;
     }
-
-    // For sparse placeholder rivers with only 2-5 points, add natural gentle deltaic bends
     let dense = [];
     for (let i = 0; i < rawCoords.length - 1; i++) {
       const p1 = rawCoords[i];
@@ -294,12 +288,11 @@
     return catmullRomSpline(dense, 6);
   }
 
-  // Render River Polylines on Map
+  // Render Base River Polylines on Map
   function renderMapRivers() {
     if (!map || !riverLayerGroup) return;
     riverLayerGroup.clearLayers();
 
-    // Show up to 250 rivers for high responsiveness
     const mapSelection = filteredRivers.slice(0, 250);
 
     mapSelection.forEach((river, idx) => {
@@ -307,27 +300,26 @@
 
       const renderCoords = getRiverRenderCoords(river.coords, idx + 1);
 
-      let lineColor = '#0284c7'; // Google Maps River Blue
+      let lineColor = '#0284c7';
       if (river.status && river.status.includes('বিপন্ন')) lineColor = '#f43f5e';
       else if (river.status && river.status.includes('ভরাট')) lineColor = '#f59e0b';
       else if (river.status && river.status.includes('মৌসুমি')) lineColor = '#8b5cf6';
 
       const polyline = L.polyline(renderCoords, {
         color: lineColor,
-        weight: river.length_km > 100 ? 3.5 : 2.5,
+        weight: river.length_km > 100 ? 3.5 : 2.2,
         opacity: 0.88,
         lineCap: 'round',
         lineJoin: 'round'
       });
 
-      polyline.bindTooltip(`<strong>${river.name_bn}</strong> (${river.length_km} কিমি)<br><small>${river.flow_path || ''}</small>`, {
+      polyline.bindTooltip(`<strong>${river.name_bn}</strong> (${river.length_km} কিমি)<br><small>${river.basin}</small>`, {
         sticky: true,
         className: 'custom-map-tooltip'
       });
 
       polyline.on('click', () => {
-        highlightRiver(river, polyline);
-        openRiverModal(river);
+        selectRiverFromSuggestion(river);
       });
 
       polyline.on('mouseover', () => {
@@ -336,7 +328,7 @@
 
       polyline.on('mouseout', () => {
         if (highlightedPolyline !== polyline) {
-          polyline.setStyle({ weight: river.length_km > 100 ? 3.5 : 2.5, opacity: 0.88 });
+          polyline.setStyle({ weight: river.length_km > 100 ? 3.5 : 2.2, opacity: 0.88 });
         }
       });
 
@@ -344,8 +336,8 @@
     });
   }
 
-  // Highlight and trace complete river flow path on map (Google Maps Ground-Truth Style)
-  function traceRiverFlowOnMap(river) {
+  // Trace river flow path with glowing animated trajectory
+  function traceRiverFlowOnMap(river, shouldFly = true) {
     if (!map || !river.coords || river.coords.length === 0) return;
 
     if (!flowMarkerGroup) {
@@ -353,7 +345,6 @@
     }
     flowMarkerGroup.clearLayers();
 
-    // Clean up previous highlights
     if (highlightGlowPolyline) {
       map.removeLayer(highlightGlowPolyline);
       highlightGlowPolyline = null;
@@ -365,110 +356,96 @@
 
     const riverCoords = getRiverRenderCoords(river.coords, 999);
 
-    // Glowing cyan river halo (Google Maps style water outline)
+    // Glowing cyan river halo
     highlightGlowPolyline = L.polyline(riverCoords, {
-      color: '#38bdf8', // crisp cyan-sky blue halo
+      color: '#38bdf8',
       weight: 8,
-      opacity: 0.55,
+      opacity: 0.65,
+      className: 'river-glow-halo',
       lineCap: 'round',
       lineJoin: 'round'
     }).addTo(map);
 
-    // Core River Blue line (exact Google Maps river color)
+    // Core active flowing line with animated stroke dash
     highlightedPolyline = L.polyline(riverCoords, {
-      color: '#0284c7', // vibrant deep river blue
+      color: '#06b6d4',
       weight: 4.8,
       opacity: 1,
-      dashArray: null,
+      className: 'active-flowing-river',
       lineCap: 'round',
       lineJoin: 'round'
     }).addTo(map);
 
-    // Origin Marker (Green Pin) with Permanent Floating Tooltip
+    // Origin Marker (Green Pin)
     const originPt = riverCoords[0];
-    const originMarker = L.circleMarker(originPt, {
+    L.circleMarker(originPt, {
       radius: 9,
       fillColor: '#10b981',
       color: '#ffffff',
       weight: 2.5,
       opacity: 1,
       fillOpacity: 1
-    }).bindPopup(`<strong>উৎস (Origin):</strong> ${river.origin_bn || river.origin_en}<br>নদী: ${river.name_bn} (${river.name_en})`)
-      .bindTooltip(`🟢 উৎস: ${river.origin_bn || river.origin_en}`, {
-        permanent: true,
-        direction: 'top',
-        className: 'origin-flow-tooltip',
-        offset: [0, -8]
-      })
-      .addTo(flowMarkerGroup);
+    }).bindTooltip(`🟢 <strong>উৎস:</strong> ${river.origin_bn || river.origin_en || 'উচ্চভূমি'}`, {
+      permanent: true,
+      direction: 'top',
+      className: 'origin-flow-tooltip',
+      offset: [0, -8]
+    }).addTo(flowMarkerGroup);
 
-    // Outfall Marker (Red Pin) with Permanent Floating Tooltip
+    // Outfall Marker (Red Pin)
     const outfallPt = riverCoords[riverCoords.length - 1];
-    const outfallMarker = L.circleMarker(outfallPt, {
+    L.circleMarker(outfallPt, {
       radius: 9,
       fillColor: '#ef4444',
       color: '#ffffff',
       weight: 2.5,
       opacity: 1,
       fillOpacity: 1
-    }).bindPopup(`<strong>পতন / মোহনা (Outfall):</strong> ${river.outfall_bn || river.outfall_en}<br>দৈর্ঘ্য: ${river.length_km} কিমি`)
-      .bindTooltip(`🔴 পতন: ${river.outfall_bn || river.outfall_en}`, {
-        permanent: true,
-        direction: 'bottom',
-        className: 'outfall-flow-tooltip',
-        offset: [0, 8]
-      })
-      .addTo(flowMarkerGroup);
+    }).bindTooltip(`🔴 <strong>পতন:</strong> ${river.outfall_bn || river.outfall_en || 'মোহনা'}`, {
+      permanent: true,
+      direction: 'bottom',
+      className: 'outfall-flow-tooltip',
+      offset: [0, 8]
+    }).addTo(flowMarkerGroup);
 
-    // Smart Close-up Zoom: Invalidate size and fly smoothly to river bounds with optimal zoom
-    if (map) {
+    // Smoothly fly camera to bounds (Only when explicitly triggered!)
+    if (shouldFly && map) {
       map.invalidateSize();
       const bounds = highlightedPolyline.getBounds();
       if (bounds.isValid()) {
-        setTimeout(() => {
-          map.flyToBounds(bounds, {
-            padding: [60, 60],
-            maxZoom: 13,
-            duration: 1.2
-          });
-        }, 50);
+        map.flyToBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 14,
+          duration: 1.1
+        });
       }
     }
 
-    // Update active banner and selected river text
     if (selectedRiverText) {
-      selectedRiverText.innerHTML = `গতিপথ ফোকাস: <strong>${river.name_bn} (${river.name_en})</strong> | দৈর্ঘ্য: ${river.length_km} কিমি | অববাহিকা: ${river.basin}`;
+      selectedRiverText.innerHTML = `ফোকাস: <strong>${river.name_bn}</strong> (${river.length_km} কিমি) | অববাহিকা: ${river.basin}`;
     }
-    updateFloatingRiverCard(river);
 
     if (activeFlowBanner) {
       activeFlowBanner.innerHTML = `
         <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-          <i class="fa-solid fa-water"></i> <strong>${river.name_bn} (${river.name_en})</strong> নদীর সম্পূর্ণ <strong>${river.length_km} কিমি</strong> গতিপথ প্রদর্শিত হচ্ছে।
-          <span style="font-size:0.82rem; opacity:0.9;">[উৎস: ${river.origin_bn} ➔ পতন: ${river.outfall_bn}]</span>
+          <i class="fa-solid fa-water"></i> <strong>${river.name_bn}</strong> (${river.length_km} কিমি): ${river.origin_bn || 'উৎস'} ➔ ${river.outfall_bn || 'মোহনা'}
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
-          <button class="btn btn-sm btn-primary" onclick="window.BD_RIVERS_APP.zoomToActiveRiver()" style="padding:4px 10px; font-size:0.75rem;"><i class="fa-solid fa-magnifying-glass-plus"></i> ক্লোজ-আপ জুম</button>
-          <button class="btn btn-sm btn-outline" onclick="window.BD_RIVERS_APP.resetMapView()" style="padding:4px 8px; font-size:0.75rem;"><i class="fa-solid fa-xmark"></i> বন্ধ করুন</button>
+          <button class="btn btn-sm btn-primary" onclick="window.BD_RIVERS_APP.zoomToActiveRiver()"><i class="fa-solid fa-magnifying-glass-plus"></i> ক্লোজ-আপ</button>
+          <button class="btn btn-sm btn-outline" onclick="window.BD_RIVERS_APP.resetMapView()"><i class="fa-solid fa-xmark"></i> বন্ধ</button>
         </div>
       `;
       activeFlowBanner.classList.remove('hidden');
     }
   }
 
-  function highlightRiver(river, polyline) {
-    traceRiverFlowOnMap(river);
-  }
-
   // Event Listeners
   function setupEventListeners() {
     // Theme toggle
     const btn1 = document.getElementById('themeToggle');
-    const btn2 = document.getElementById('themeToggleBtn');
     if (btn1) btn1.addEventListener('click', toggleTheme);
-    if (btn2) btn2.addEventListener('click', toggleTheme);
 
-    // Basemap Switcher Buttons (Google Satellite, Google Maps, Esri, OSM)
+    // Basemap switcher
     document.querySelectorAll('.basemap-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const layerKey = btn.getAttribute('data-layer');
@@ -485,12 +462,9 @@
       });
     });
 
-    // Reset Map View
-    if (resetMapBtn) {
-      resetMapBtn.addEventListener('click', resetMapView);
-    }
+    if (resetMapBtn) resetMapBtn.addEventListener('click', resetMapView);
 
-    // Fullscreen Map Toggle Button
+    // Fullscreen Map Toggle
     if (fullscreenMapBtn && mapSection) {
       fullscreenMapBtn.addEventListener('click', () => {
         const isFullscreen = mapSection.classList.toggle('fullscreen');
@@ -505,7 +479,7 @@
       });
     }
 
-    // Search Input with Debounce & Live Autocomplete
+    // Search Input with Debounce: NEVER fly map while typing! Only show suggestions!
     let searchTimeout;
     if (riverSearchInput) {
       riverSearchInput.addEventListener('input', (e) => {
@@ -513,16 +487,15 @@
         const val = e.target.value.trim();
         if (clearSearchBtn) clearSearchBtn.classList.toggle('hidden', val.length === 0);
 
-        // Show instant live autocomplete suggestions
         renderAutocomplete(val);
 
         searchTimeout = setTimeout(() => {
           searchQuery = val.toLowerCase();
-          applyFilters();
-        }, 120);
+          applyFilters(false); // Do NOT fly map while typing
+        }, 150);
       });
 
-      // Keyboard navigation for autocomplete suggestions
+      // Keyboard navigation in suggestions
       riverSearchInput.addEventListener('keydown', (e) => {
         if (!searchSuggestions || searchSuggestions.classList.contains('hidden')) return;
         const items = searchSuggestions.querySelectorAll('.suggestion-item');
@@ -542,6 +515,9 @@
           if (activeSuggestionIndex >= 0 && activeSuggestionIndex < items.length) {
             e.preventDefault();
             items[activeSuggestionIndex].click();
+          } else if (items.length > 0) {
+            e.preventDefault();
+            items[0].click();
           }
         } else if (e.key === 'Escape') {
           searchSuggestions.classList.add('hidden');
@@ -549,7 +525,7 @@
       });
     }
 
-    // Close autocomplete when clicking outside
+    // Close autocomplete on click outside
     document.addEventListener('click', (e) => {
       if (searchSuggestions && !searchSuggestions.contains(e.target) && e.target !== riverSearchInput) {
         searchSuggestions.classList.add('hidden');
@@ -557,86 +533,23 @@
     });
 
     // Clear Search Button
-    
-    // Google Maps Floating Search Input & Sync
-    let floatingSearchTimeout;
-    if (mapFloatingSearchInput) {
-      mapFloatingSearchInput.addEventListener('input', (e) => {
-        clearTimeout(floatingSearchTimeout);
-        const val = e.target.value.trim();
-        if (clearFloatingSearchBtn) clearFloatingSearchBtn.classList.toggle('hidden', val.length === 0);
-        if (riverSearchInput) riverSearchInput.value = val;
-        if (clearSearchBtn) clearSearchBtn.classList.toggle('hidden', val.length === 0);
-
-        // Render autocomplete into floating dropdown
-        renderFloatingAutocomplete(val);
-
-        floatingSearchTimeout = setTimeout(() => {
-          searchQuery = val.toLowerCase();
-          applyFilters();
-        }, 120);
-      });
-
-      // Keyboard navigation for floating autocomplete
-      mapFloatingSearchInput.addEventListener('keydown', (e) => {
-        if (!floatingSearchSuggestions || floatingSearchSuggestions.classList.contains('hidden')) return;
-        const items = floatingSearchSuggestions.querySelectorAll('.suggestion-item');
-        if (items.length === 0) return;
-
-        if (e.key === 'ArrowDown') {
-          e.preventDefault();
-          activeFloatingSuggestionIndex = (activeFloatingSuggestionIndex + 1) % items.length;
-          items.forEach((it, i) => it.classList.toggle('active', i === activeFloatingSuggestionIndex));
-          items[activeFloatingSuggestionIndex].scrollIntoView({ block: 'nearest' });
-        } else if (e.key === 'ArrowUp') {
-          e.preventDefault();
-          activeFloatingSuggestionIndex = (activeFloatingSuggestionIndex - 1 + items.length) % items.length;
-          items.forEach((it, i) => it.classList.toggle('active', i === activeFloatingSuggestionIndex));
-          items[activeFloatingSuggestionIndex].scrollIntoView({ block: 'nearest' });
-        } else if (e.key === 'Enter') {
-          if (activeFloatingSuggestionIndex >= 0 && activeFloatingSuggestionIndex < items.length) {
-            e.preventDefault();
-            items[activeFloatingSuggestionIndex].click();
-          }
-        } else if (e.key === 'Escape') {
-          floatingSearchSuggestions.classList.add('hidden');
-        }
-      });
-    }
-
-    // Clear Floating Search Button
-    if (clearFloatingSearchBtn) {
-      clearFloatingSearchBtn.addEventListener('click', () => {
-        if (mapFloatingSearchInput) mapFloatingSearchInput.value = '';
+    if (clearSearchBtn) {
+      clearSearchBtn.addEventListener('click', () => {
         if (riverSearchInput) riverSearchInput.value = '';
-        clearFloatingSearchBtn.classList.add('hidden');
-        if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
+        clearSearchBtn.classList.add('hidden');
         searchQuery = '';
-        if (floatingSearchSuggestions) floatingSearchSuggestions.classList.add('hidden');
         if (searchSuggestions) searchSuggestions.classList.add('hidden');
         resetMapView();
-        applyFilters();
+        applyFilters(false);
+        if (riverSearchInput) riverSearchInput.focus();
       });
     }
-
-    // Close floating autocomplete when clicking outside
-    document.addEventListener('click', (e) => {
-      if (floatingSearchSuggestions && !floatingSearchSuggestions.contains(e.target) && e.target !== mapFloatingSearchInput) {
-        floatingSearchSuggestions.classList.add('hidden');
-      }
-    });
 
     // Floating Action Buttons (FABs)
-    if (floatingLocateBtn) {
-      floatingLocateBtn.addEventListener('click', locateUser);
-    }
-    if (floatingResetBtn) {
-      floatingResetBtn.addEventListener('click', resetMapView);
-    }
-    if (floatingFullscreenBtn) {
-      floatingFullscreenBtn.addEventListener('click', () => {
-        if (fullscreenMapBtn) fullscreenMapBtn.click();
-      });
+    if (floatingLocateBtn) floatingLocateBtn.addEventListener('click', locateUser);
+    if (floatingResetBtn) floatingResetBtn.addEventListener('click', resetMapView);
+    if (floatingFullscreenBtn && fullscreenMapBtn) {
+      floatingFullscreenBtn.addEventListener('click', () => fullscreenMapBtn.click());
     }
 
     // Floating River Dossier Card Buttons
@@ -646,70 +559,37 @@
       });
     }
     if (floatingCardZoomBtn) {
-      floatingCardZoomBtn.addEventListener('click', () => {
-        if (highlightedPolyline && map) {
-          map.invalidateSize();
-          const bounds = highlightedPolyline.getBounds();
-          if (bounds.isValid()) {
-            map.flyToBounds(bounds, { padding: [50, 50], maxZoom: 14, duration: 1.2 });
-          }
-        }
-      });
+      floatingCardZoomBtn.addEventListener('click', zoomToActiveRiver);
     }
     if (floatingCardDetailsBtn) {
       floatingCardDetailsBtn.addEventListener('click', () => {
-        if (currentlySelectedRiver) {
-          openRiverModal(currentlySelectedRiver);
-        }
+        if (currentlySelectedRiver) openRiverModal(currentlySelectedRiver);
       });
     }
 
-    if (clearSearchBtn) {
-      clearSearchBtn.addEventListener('click', () => {
-        if (riverSearchInput) riverSearchInput.value = '';
-        clearSearchBtn.classList.add('hidden');
-        searchQuery = '';
-        if (searchSuggestions) searchSuggestions.classList.add('hidden');
-        resetMapView();
-        applyFilters();
-        if (riverSearchInput) riverSearchInput.focus();
-      });
-    }
-
-    // Quick Search Tags (clears conflicting dropdown filters to ensure 100% match!)
+    // Quick Search Tags
     document.querySelectorAll('.quick-tag-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const q = btn.getAttribute('data-query');
-        selectedBasin = 'all';
-        selectedDivision = 'all';
-        selectedTransboundary = 'all';
-        selectedStatus = 'all';
-        if (filterBasin) filterBasin.value = 'all';
-        if (filterDivision) filterDivision.value = 'all';
-        if (filterTransboundary) filterTransboundary.value = 'all';
-        if (filterStatus) filterStatus.value = 'all';
-        document.querySelectorAll('.quick-filter-chip').forEach(c => c.classList.remove('active'));
-
-        if (riverSearchInput) riverSearchInput.value = q;
-        if (mapFloatingSearchInput) mapFloatingSearchInput.value = q;
-        if (clearSearchBtn) clearSearchBtn.classList.remove('hidden');
-        if (clearFloatingSearchBtn) clearFloatingSearchBtn.classList.remove('hidden');
-        searchQuery = q.toLowerCase();
-        if (searchSuggestions) searchSuggestions.classList.add('hidden');
-        if (floatingSearchSuggestions) floatingSearchSuggestions.classList.add('hidden');
-        applyFilters();
-        if (filteredRivers.length > 0) {
-          focusRiverOnMap(filteredRivers[0]);
-          updateFloatingRiverCard(filteredRivers[0]);
+        const match = allRivers.find(r => 
+          (r.name_bn || '').includes(q) || 
+          (r.name_en || '').toLowerCase().includes(q.toLowerCase())
+        );
+        if (match) {
+          selectRiverFromSuggestion(match);
+        } else {
+          if (riverSearchInput) riverSearchInput.value = q;
+          searchQuery = q.toLowerCase();
+          applyFilters(false);
         }
       });
     });
 
     // Dropdown Filters
-    if (filterBasin) filterBasin.addEventListener('change', (e) => { selectedBasin = e.target.value; applyFilters(); });
-    if (filterDivision) filterDivision.addEventListener('change', (e) => { selectedDivision = e.target.value; applyFilters(); });
-    if (filterTransboundary) filterTransboundary.addEventListener('change', (e) => { selectedTransboundary = e.target.value; applyFilters(); });
-    if (filterStatus) filterStatus.addEventListener('change', (e) => { selectedStatus = e.target.value; applyFilters(); });
+    if (filterBasin) filterBasin.addEventListener('change', (e) => { selectedBasin = e.target.value; applyFilters(false); });
+    if (filterDivision) filterDivision.addEventListener('change', (e) => { selectedDivision = e.target.value; applyFilters(false); });
+    if (filterTransboundary) filterTransboundary.addEventListener('change', (e) => { selectedTransboundary = e.target.value; applyFilters(false); });
+    if (filterStatus) filterStatus.addEventListener('change', (e) => { selectedStatus = e.target.value; applyFilters(false); });
 
     // Reset Filters Button
     if (resetFiltersBtn) resetFiltersBtn.addEventListener('click', resetAllFilters);
@@ -740,7 +620,7 @@
           updateCount();
           return;
         }
-        applyFilters();
+        applyFilters(false);
       });
     });
 
@@ -755,7 +635,7 @@
       });
     }
 
-    // Modal close
+    // Modal Close
     if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeRiverModal);
     if (riverModal) {
       riverModal.addEventListener('click', (e) => {
@@ -771,7 +651,8 @@
     // Copy links
     document.querySelectorAll('.copy-link-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const fullUrl = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/' + btn.getAttribute('data-url');
+        const relUrl = btn.getAttribute('data-url');
+        const fullUrl = window.location.origin + window.location.pathname.replace(/\/$/, '') + '/' + relUrl;
         copyTextFallback(fullUrl);
         showToast('ডাউনলোড লিংক কপি হয়েছে!');
       });
@@ -780,7 +661,7 @@
 
   function resetMapView() {
     if (!map) return;
-    map.flyTo([23.6850, 90.3563], 7, { duration: 1.2 });
+    map.flyTo([23.6850, 90.3563], 7, { duration: 1.1 });
     if (mapFloatingRiverCard) mapFloatingRiverCard.classList.add('hidden');
     if (highlightGlowPolyline) {
       map.removeLayer(highlightGlowPolyline);
@@ -801,7 +682,6 @@
     }
   }
 
-  // Zoom directly into current active river bounds
   function zoomToActiveRiver() {
     if (highlightedPolyline && map) {
       map.invalidateSize();
@@ -810,94 +690,13 @@
         map.flyToBounds(bounds, {
           padding: [50, 50],
           maxZoom: 14,
-          duration: 1.2
+          duration: 1.1
         });
       }
     }
   }
 
-  // Live Instant Autocomplete Dropdown
-  
-  function renderFloatingAutocomplete(query) {
-    if (!floatingSearchSuggestions) return;
-    const q = (query || '').toLowerCase().trim();
-    if (!q || q.length < 1) {
-      floatingSearchSuggestions.innerHTML = '';
-      floatingSearchSuggestions.classList.add('hidden');
-      activeFloatingSuggestionIndex = -1;
-      return;
-    }
-
-    const matches = [];
-    allRivers.forEach(r => {
-      const nameEn = (r.name_en || '').toLowerCase();
-      const nameBn = (r.name_bn || '').toLowerCase();
-      let score = 0;
-      if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী') {
-        score = 10000;
-      } else if (nameEn.startsWith(q) || nameBn.startsWith(q)) {
-        score = 5000;
-      } else if (nameEn.includes(q) || nameBn.includes(q)) {
-        score = 2000;
-      } else {
-        const districts = (r.districts || []).join(' ').toLowerCase();
-        if (districts.includes(q)) score = 500;
-      }
-      if (score > 0) matches.push({ river: r, score });
-    });
-
-    matches.sort((a, b) => b.score - a.score);
-    const topMatches = matches.slice(0, 8);
-
-    if (topMatches.length === 0) {
-      floatingSearchSuggestions.innerHTML = `<div style="padding: 12px 16px; color: var(--text-muted); font-size: 0.85rem;"><i class="fa-solid fa-circle-question"></i> কোনো নদী পাওয়া যায়নি (যেমন: balu, পদ্মা, তুরাগ)।</div>`;
-      floatingSearchSuggestions.classList.remove('hidden');
-      return;
-    }
-
-    floatingSearchSuggestions.innerHTML = topMatches.map((item, idx) => {
-      const r = item.river;
-      const isEndangered = (r.status || '').includes('বিপন্ন') || (r.status || '').includes('ভরাট');
-      const badgeStyle = isEndangered 
-        ? 'background: rgba(244,63,94,0.15); color: #f43f5e; border-color: rgba(244,63,94,0.3);' 
-        : 'background: rgba(16,185,129,0.15); color: #10b981; border-color: rgba(16,185,129,0.3);';
-
-      return `
-        <div class="suggestion-item" data-index="${idx}" data-id="${r.id}" role="option">
-          <div class="suggestion-item-main">
-            <div class="suggestion-name">
-              <span>${r.name_bn}</span>
-              <span class="suggestion-en">${r.name_en}</span>
-              ${r.transboundary ? '<span style="font-size:0.7rem; color:#38bdf8; font-weight:600;"><i class="fa-solid fa-flag"></i> অভিন্ন</span>' : ''}
-            </div>
-            <div class="suggestion-meta">
-              <span><i class="fa-solid fa-location-dot"></i> ${(r.districts || []).slice(0, 2).join(', ')}</span>
-              <span>&bull;</span>
-              <span>${r.basin}</span>
-            </div>
-          </div>
-          <div class="suggestion-badges">
-            <span class="suggestion-badge">${r.length_km} কিমি</span>
-            <span class="suggestion-badge" style="${badgeStyle}">${r.status}</span>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    floatingSearchSuggestions.classList.remove('hidden');
-    activeFloatingSuggestionIndex = -1;
-
-    floatingSearchSuggestions.querySelectorAll('.suggestion-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const id = item.getAttribute('data-id');
-        const river = allRivers.find(x => x.id === id);
-        if (river) {
-          selectRiverFromSuggestion(river);
-        }
-      });
-    });
-  }
-
+  // Autocomplete Suggestions (Smooth, instantaneous, no map flying)
   function renderAutocomplete(query) {
     if (!searchSuggestions) return;
     const q = (query || '').toLowerCase().trim();
@@ -930,7 +729,7 @@
     const topMatches = matches.slice(0, 8);
 
     if (topMatches.length === 0) {
-      searchSuggestions.innerHTML = `<div style="padding: 14px 18px; color: var(--text-muted); font-size: 0.9rem;"><i class="fa-solid fa-circle-question"></i> কোনো নদী পাওয়া যায়নি। বানানের সঠিক রূপ চেষ্টা করুন (যেমন: balu, তুরাগ, পদ্মা)।</div>`;
+      searchSuggestions.innerHTML = `<div style="padding: 12px 16px; color: var(--text-muted); font-size: 0.88rem;"><i class="fa-solid fa-circle-question"></i> কোনো নদী পাওয়া যায়নি। বানানের সঠিক রূপ চেষ্টা করুন (যেমন: balu, তুরাগ, পদ্মা)।</div>`;
       searchSuggestions.classList.remove('hidden');
       return;
     }
@@ -947,13 +746,13 @@
           <div class="suggestion-item-main">
             <div class="suggestion-name">
               <span>${r.name_bn}</span>
-              <span class="suggestion-en">${r.name_en}</span>
+              <span class="suggestion-en">${r.name_en || ''}</span>
               ${r.transboundary ? '<span style="font-size:0.7rem; color:#38bdf8; font-weight:600;"><i class="fa-solid fa-flag"></i> অভিন্ন নদী</span>' : ''}
             </div>
             <div class="suggestion-meta">
-              <span><i class="fa-solid fa-location-dot"></i> ${(r.districts || []).slice(0, 3).join(', ')}</span>
+              <span><i class="fa-solid fa-location-dot"></i> ${(r.districts || []).slice(0, 2).join(', ')}</span>
               <span>&bull;</span>
-              <span><i class="fa-solid fa-water"></i> ${r.basin}</span>
+              <span>${r.basin}</span>
             </div>
           </div>
           <div class="suggestion-badges">
@@ -967,7 +766,6 @@
     searchSuggestions.classList.remove('hidden');
     activeSuggestionIndex = -1;
 
-    // Attach click listeners to suggestions
     searchSuggestions.querySelectorAll('.suggestion-item').forEach(item => {
       item.addEventListener('click', () => {
         const id = item.getAttribute('data-id');
@@ -979,8 +777,37 @@
     });
   }
 
-  
-  // Update Google Maps-style Floating River Dossier Card
+  // River Selection: Closes suggestions, flies map gently, animates flowing path, updates card
+  function selectRiverFromSuggestion(river) {
+    if (!river) return;
+    currentlySelectedRiver = river;
+
+    if (riverSearchInput) riverSearchInput.value = river.name_bn;
+    if (clearSearchBtn) clearSearchBtn.classList.remove('hidden');
+    if (searchSuggestions) searchSuggestions.classList.add('hidden');
+
+    // Reset dropdown filters so this river appears in the grid below
+    selectedBasin = 'all';
+    selectedDivision = 'all';
+    selectedTransboundary = 'all';
+    selectedStatus = 'all';
+    if (filterBasin) filterBasin.value = 'all';
+    if (filterDivision) filterDivision.value = 'all';
+    if (filterTransboundary) filterTransboundary.value = 'all';
+    if (filterStatus) filterStatus.value = 'all';
+    document.querySelectorAll('.quick-filter-chip').forEach(c => c.classList.remove('active'));
+
+    searchQuery = river.name_bn.toLowerCase();
+
+    // Trace path and fly map with glowing pulse
+    traceRiverFlowOnMap(river, true);
+    updateFloatingRiverCard(river);
+
+    // Update bottom grid without re-flying
+    applyFilters(false);
+  }
+
+  // Update Floating River Card
   function updateFloatingRiverCard(river) {
     if (!mapFloatingRiverCard || !river) return;
     currentlySelectedRiver = river;
@@ -1025,7 +852,7 @@
     mapFloatingRiverCard.classList.remove('hidden');
   }
 
-  // Google Maps-Grade Geolocation & Nearest River Detection
+  // Geolocation & Nearest River Detection
   function locateUser() {
     if (!navigator.geolocation) {
       showToast('আপনার ব্রাউজারে Geolocation সমর্থিত নয়।');
@@ -1055,7 +882,7 @@
 
         userGpsMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
 
-        // Find nearest river in allRivers
+        // Find nearest river
         let nearestRiver = null;
         let minDistance = Infinity;
 
@@ -1078,11 +905,11 @@
 
         const distText = minDistance < 1 ? `${Math.round(minDistance * 1000)} মিটার` : `${minDistance.toFixed(1)} কিমি`;
         const popupContent = nearestRiver 
-          ? `<div style="font-size:0.88rem; line-height:1.4;"><strong><i class="fa-solid fa-location-crosshairs" style="color:#0284c7;"></i> আপনার বর্তমান অবস্থান (GPS)</strong><br>সবচেয়ে নিকটবর্তী নদী: <strong>${nearestRiver.name_bn}</strong> (${nearestRiver.name_en})<br>দূরত্ব: মাত্র <strong>${distText}</strong> দূরে!<br><br><button id="gpsFlyBtn" class="btn btn-xs btn-primary" style="padding: 4px 10px; font-size: 0.78rem; border-radius: 4px; cursor: pointer;">নদীটির গতিপথ দেখুন ➔</button></div>`
+          ? `<div style="font-size:0.86rem; line-height:1.4;"><strong><i class="fa-solid fa-location-crosshairs" style="color:#0284c7;"></i> আপনার বর্তমান অবস্থান (GPS)</strong><br>নিকটবর্তী নদী: <strong>${nearestRiver.name_bn}</strong> (${nearestRiver.name_en})<br>দূরত্ব: মাত্র <strong>${distText}</strong> দূরে!<br><br><button id="gpsFlyBtn" class="btn btn-xs btn-primary" style="padding: 4px 10px; font-size: 0.78rem; border-radius: 4px; cursor: pointer;">গতিপথ দেখুন ➔</button></div>`
           : `<strong>আপনার অবস্থান (GPS)</strong><br>অক্ষাংশ: ${lat.toFixed(4)}, দ্রাঘিমাংশ: ${lng.toFixed(4)}`;
 
         userGpsMarker.bindPopup(popupContent).openPopup();
-        map.flyTo([lat, lng], 13, { duration: 1.2 });
+        map.flyTo([lat, lng], 13, { duration: 1.1 });
 
         setTimeout(() => {
           const btn = document.getElementById('gpsFlyBtn');
@@ -1101,39 +928,12 @@
     );
   }
 
-  function selectRiverFromSuggestion(river) {
-    currentlySelectedRiver = river;
-    if (riverSearchInput) {
-      riverSearchInput.value = river.name_bn;
-    }
-    if (mapFloatingSearchInput) {
-      mapFloatingSearchInput.value = river.name_bn;
-    }
-    if (clearSearchBtn) {
-      clearSearchBtn.classList.remove('hidden');
-    }
-    if (clearFloatingSearchBtn) {
-      clearFloatingSearchBtn.classList.remove('hidden');
-    }
-    searchQuery = river.name_bn.toLowerCase();
-    if (searchSuggestions) {
-      searchSuggestions.classList.add('hidden');
-    }
-    if (floatingSearchSuggestions) {
-      floatingSearchSuggestions.classList.add('hidden');
-    }
-    applyFilters();
-    focusRiverOnMap(river);
-    updateFloatingRiverCard(river);
-  }
-
-  // Apply filters with Smart Relevance Scoring
-  function applyFilters() {
+  // Apply filters with relevance scoring
+  function applyFilters(shouldFly = false) {
     const q = searchQuery.toLowerCase().trim();
     const scoredResults = [];
 
     allRivers.forEach(r => {
-      // Basin, Division, Transboundary, Status checks
       if (selectedBasin !== 'all' && r.basin !== selectedBasin) return;
       if (selectedDivision !== 'all' && (!r.divisions || !r.divisions.includes(selectedDivision))) return;
       if (selectedTransboundary === 'yes' && !r.transboundary) return;
@@ -1143,13 +943,11 @@
       if (q) {
         const nameEn = (r.name_en || '').toLowerCase();
         const nameBn = (r.name_bn || '').toLowerCase();
-
         let score = 0;
 
         const cleanEn = cleanTransliteration(nameEn);
         const cleanQ = cleanTransliteration(q);
 
-        // Exact Name Match (Highest priority)
         if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী') {
           score = 10000;
         } else if (nameEn.startsWith(q) || nameBn.startsWith(q)) {
@@ -1157,13 +955,12 @@
         } else if (nameEn.includes(q) || nameBn.includes(q)) {
           score = 2000;
         } else if (cleanQ.length >= 3 && cleanEn === cleanQ) {
-          score = 1800; // e.g. "sitalakhya" matches "shitalakshya", "megna" matches "meghna", "burigonga" matches "buriganga"
+          score = 1800;
         } else if (cleanQ.length >= 3 && cleanEn.startsWith(cleanQ)) {
           score = 1500;
         } else if (cleanQ.length >= 4 && cleanEn.includes(cleanQ)) {
           score = 1200;
         } else {
-          // Word-level Levenshtein edit distance for spelling mistakes
           if (q.length >= 4) {
             const words = nameEn.split(/[\s()]+/);
             for (const w of words) {
@@ -1177,7 +974,6 @@
           }
 
           if (score === 0) {
-            // Broad matching in other attributes
             const districts = (r.districts || []).join(' ').toLowerCase();
             const origin = (r.origin_bn || '').toLowerCase();
             const outfall = (r.outfall_bn || '').toLowerCase();
@@ -1199,18 +995,17 @@
       }
     });
 
-    // Sort by score descending so exact river matches appear immediately
     scoredResults.sort((a, b) => b.score - a.score);
     filteredRivers = scoredResults.map(item => item.river);
 
-    // Auto-focus and highlight flow path on map when a specific river is queried
-    if (q && filteredRivers.length > 0 && scoredResults[0].score >= 1000) {
-      traceRiverFlowOnMap(filteredRivers[0]);
+    if (shouldFly && q && filteredRivers.length > 0 && scoredResults[0].score >= 1000) {
+      traceRiverFlowOnMap(filteredRivers[0], true);
+      updateFloatingRiverCard(filteredRivers[0]);
     } else if (!q) {
       if (activeFlowBanner) activeFlowBanner.classList.add('hidden');
     }
 
-    renderRivers();
+    renderRivers(true);
     renderMapRivers();
     updateCount();
   }
@@ -1223,11 +1018,8 @@
     selectedStatus = 'all';
 
     if (riverSearchInput) riverSearchInput.value = '';
-    if (mapFloatingSearchInput) mapFloatingSearchInput.value = '';
     if (clearSearchBtn) clearSearchBtn.classList.add('hidden');
-    if (clearFloatingSearchBtn) clearFloatingSearchBtn.classList.add('hidden');
     if (searchSuggestions) searchSuggestions.classList.add('hidden');
-    if (floatingSearchSuggestions) floatingSearchSuggestions.classList.add('hidden');
     if (mapFloatingRiverCard) mapFloatingRiverCard.classList.add('hidden');
 
     if (filterBasin) filterBasin.value = 'all';
@@ -1237,7 +1029,7 @@
     document.querySelectorAll('.quick-filter-chip').forEach(c => c.classList.remove('active'));
 
     resetMapView();
-    applyFilters();
+    applyFilters(false);
   }
 
   function updateCount() {
@@ -1248,35 +1040,38 @@
     if (riversGrid) riversGrid.classList.toggle('hidden', filteredRivers.length === 0);
   }
 
-  // Render Rivers Grid with Complete Flow Stepper
-  function renderRivers() {
+  // Render River Cards with chunked Load More for 60fps responsiveness
+  function renderRivers(resetLimit = true) {
     if (!riversGrid) return;
+    if (resetLimit) currentRenderLimit = 24;
     riversGrid.innerHTML = '';
-    const fragment = document.createDocumentFragment();
 
-    filteredRivers.slice(0, 120).forEach(r => {
+    const existingLoadMore = document.getElementById('loadMoreRiversBtnWrap');
+    if (existingLoadMore) existingLoadMore.remove();
+
+    const fragment = document.createDocumentFragment();
+    const slice = filteredRivers.slice(0, currentRenderLimit);
+
+    slice.forEach(r => {
       const card = document.createElement('div');
       card.className = 'river-card';
       const statusClass = `status-${(r.status || '').replace(/\s+/g, '-')}`;
-
-      // Build flow steps
       const flowSteps = (r.flow_path || '').split('➔').map(s => s.trim()).filter(Boolean);
 
       card.innerHTML = `
         <div class="river-card-header">
-          <h4 class="river-name">${r.name_bn} <small style="font-size:0.75rem; color:var(--text-muted);">(${r.name_en || ''})</small></h4>
+          <h4 class="river-name">${r.name_bn} <small style="font-size:0.75rem; color:var(--text-muted); font-weight:normal;">(${r.name_en || ''})</small></h4>
           <span class="river-id">${r.id}</span>
         </div>
 
         <span class="status-badge ${statusClass}">${r.status}</span>
 
         <div class="river-info-row">
-          <strong>দৈর্ঘ্য:</strong> ${r.length_km} কিলোমিটার | <strong>অববাহিকা:</strong> ${r.basin}
+          <strong>দৈর্ঘ্য:</strong> ${r.length_km} কিমি | <strong>অববাহিকা:</strong> ${r.basin}
         </div>
 
-        <!-- Complete Flow Path Stepper -->
         <div class="flow-path-container">
-          <div class="flow-path-title"><i class="fa-solid fa-route"></i> নদীর সম্পূর্ণ গতিপথ (Complete Flow Course):</div>
+          <div class="flow-path-title"><i class="fa-solid fa-route"></i> গতিপথ:</div>
           <div class="flow-stepper">
             <span class="flow-step-point origin"><i class="fa-solid fa-circle-dot"></i> [উৎস] ${r.origin_bn || r.origin_en}</span>
             ${flowSteps.length > 0 ? flowSteps.map(step => `<span class="flow-step-arrow">➔</span><span class="flow-step-point">${step}</span>`).join('') : ''}
@@ -1288,18 +1083,17 @@
         ${r.transboundary ? `<div class="transboundary-tag"><i class="fa-solid fa-earth-americas"></i> অভিন্ন নদী (${r.transboundary_country})</div>` : ''}
 
         <div class="river-card-actions">
-          <button class="btn btn-sm btn-outline focus-river-btn" data-id="${r.id}"><i class="fa-solid fa-route"></i> মানচিত্রে গতিপথ দেখুন</button>
-          <button class="btn btn-sm btn-primary view-details-btn" data-id="${r.id}"><i class="fa-solid fa-circle-info"></i> বিস্তারিত তথ্য</button>
+          <button class="btn btn-sm btn-outline focus-river-btn" data-id="${r.id}"><i class="fa-solid fa-route"></i> ম্যাপে গতিপথ</button>
+          <button class="btn btn-sm btn-primary view-details-btn" data-id="${r.id}"><i class="fa-solid fa-circle-info"></i> বিস্তারিত</button>
         </div>
       `;
 
-      // Focus river on map button
       card.querySelector('.focus-river-btn').addEventListener('click', (e) => {
         e.stopPropagation();
-        focusRiverOnMap(r);
+        selectRiverFromSuggestion(r);
+        document.getElementById('mapSection').scrollIntoView({ behavior: 'smooth' });
       });
 
-      // View details button & card click
       card.querySelector('.view-details-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         openRiverModal(r);
@@ -1313,13 +1107,24 @@
     });
 
     riversGrid.appendChild(fragment);
-  }
 
-  // Focus river on map and trace flow path
-  function focusRiverOnMap(river) {
-    if (!map || !river.coords || river.coords.length === 0) return;
-    document.getElementById('mapSection').scrollIntoView({ behavior: 'smooth' });
-    traceRiverFlowOnMap(river);
+    // If more rivers remaining, show Load More button
+    if (filteredRivers.length > currentRenderLimit) {
+      const remaining = filteredRivers.length - currentRenderLimit;
+      const loadMoreWrap = document.createElement('div');
+      loadMoreWrap.id = 'loadMoreRiversBtnWrap';
+      loadMoreWrap.className = 'load-more-container';
+      loadMoreWrap.innerHTML = `
+        <button id="loadMoreRiversBtn" class="btn btn-secondary btn-sm">
+          <i class="fa-solid fa-plus"></i> আরো ২৪টি নদী দেখুন (${remaining}টি বাকি)
+        </button>
+      `;
+      loadMoreWrap.querySelector('button').addEventListener('click', () => {
+        currentRenderLimit += 24;
+        renderRivers(false);
+      });
+      riversGrid.after(loadMoreWrap);
+    }
   }
 
   // Open River Details Modal
@@ -1328,127 +1133,104 @@
 
     modalBody.innerHTML = `
       <div class="modal-header-section">
-        <h3 style="font-size: 1.5rem; font-weight: 700; color: var(--accent-cyan);">${r.name_bn} (${r.name_en})</h3>
+        <h3 style="font-size: 1.4rem; font-weight: 700; color: var(--accent-cyan);">${r.name_bn} (${r.name_en})</h3>
         <span class="status-badge status-${(r.status || '').replace(/\s+/g, '-')}">${r.status}</span>
       </div>
 
-      <div class="modal-details-grid">
-        <div class="detail-box">
-          <label>নদীর পরিচিতি আইডি</label>
-          <div><code>${r.id}</code></div>
+      <div class="modal-grid-details" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin: 14px 0;">
+        <div class="modal-detail-box"><strong>নদী আইডি:</strong> ${r.id}</div>
+        <div class="modal-detail-box"><strong>দৈর্ঘ্য:</strong> ${r.length_km} কিমি</div>
+        <div class="modal-detail-box"><strong>অববাহিকা:</strong> ${r.basin}</div>
+        <div class="modal-detail-box"><strong>অভিন্ন নদী:</strong> ${r.transboundary ? `হ্যাঁ (${r.transboundary_country})` : 'না (অভ্যন্তরীণ)'}</div>
+      </div>
+
+      <div style="background:var(--bg-input); padding:12px 14px; border-radius:var(--radius-sm); margin-bottom:12px;">
+        <div style="margin-bottom:6px;"><strong>🟢 উৎস (Origin):</strong> ${r.origin_bn || ''} <span style="color:var(--text-muted); font-size:0.82rem;">(${r.origin_en || ''})</span></div>
+        <div style="margin-bottom:6px;"><strong>🔴 মোহনা / পতন (Outfall):</strong> ${r.outfall_bn || ''} <span style="color:var(--text-muted); font-size:0.82rem;">(${r.outfall_en || ''})</span></div>
+        <div><strong>প্রবাহ পথ:</strong> ${r.flow_path || 'তথ্য প্রক্রিয়াধীন'}</div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <strong>প্রবাহিত বিভাগ ও জেলাসমূহ:</strong>
+        <div style="color:var(--text-secondary); margin-top:4px;">
+          বিভাগ: ${(r.divisions || []).join(', ') || 'বাংলাদেশ'} | জেলা: ${(r.districts || []).join(', ') || 'তথ্য নেই'}
         </div>
-        <div class="detail-box">
-          <label>মোট দৈর্ঘ্য</label>
-          <div>${r.length_km} কিমি</div>
+      </div>
+
+      ${r.historical_bcs_significance ? `
+        <div style="background:rgba(245,158,11,0.08); border-left:4px solid #f59e0b; padding:10px 14px; border-radius:0 var(--radius-sm) var(--radius-sm) 0; margin-bottom:12px;">
+          <strong style="color:#fbbf24;"><i class="fa-solid fa-graduation-cap"></i> বিসিএস ও চাকরির পরীক্ষার গুরুত্ব:</strong>
+          <p style="margin-top:4px; font-size:0.88rem; color:var(--text-primary); line-height:1.5;">${r.historical_bcs_significance}</p>
         </div>
-        <div class="detail-box">
-          <label>প্রধান অববাহিকা</label>
-          <div>${r.basin}</div>
+      ` : ''}
+
+      ${r.description ? `
+        <div style="font-size:0.88rem; color:var(--text-secondary); line-height:1.6; margin-bottom:14px;">
+          <strong>বর্ণনা:</strong> ${r.description}
         </div>
-        <div class="detail-box">
-          <label>অভিন্ন নদী স্ট্যাটাস</label>
-          <div>${r.transboundary ? `হ্যাঁ (${r.transboundary_country} সীমান্ত)` : 'না (অভ্যন্তরীণ নদী)'}</div>
-        </div>
-        <div class="detail-box full-width">
-          <label>উৎপত্তি স্থল (Source)</label>
-          <div><strong>${r.origin_bn || r.origin_en}</strong></div>
-        </div>
-        <div class="detail-box full-width">
-          <label><i class="fa-solid fa-route"></i> সম্পূর্ণ গতিপথ ও প্রবাহ পথ (Course & Districts)</label>
-          <div style="font-size:1.05rem; line-height:1.6; margin-top:4px; color:var(--accent-cyan);">${r.flow_path}</div>
-          <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">সংশ্লিষ্ট জেলা: ${(r.districts || []).join(', ')}</div>
-        </div>
-        <div class="detail-box full-width">
-          <label>পতন / মোহনা (Outfall)</label>
-          <div><strong>${r.outfall_bn || r.outfall_en}</strong></div>
-        </div>
-        <div class="detail-box full-width bcs-highlight-box">
-          <label><i class="fa-solid fa-graduation-cap"></i> বিসিএস ও সাধারণ জ্ঞান তথ্য</label>
-          <div>${r.historical_bcs_significance}</div>
-        </div>
-        <div class="detail-box full-width">
-          <button class="btn btn-primary" onclick="window.BD_RIVERS_APP.focusRiver('${r.id}')" style="width:100%; justify-content:center;">
-            <i class="fa-solid fa-map-location-dot"></i> মানচিত্রে সম্পূর্ণ গতিপথ দেখুন ও ট্র্যাক করুন
-          </button>
-        </div>
+      ` : ''}
+
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="window.BD_RIVERS_APP.closeModal()">বন্ধ করুন</button>
+        <button class="btn btn-primary btn-sm" onclick="window.BD_RIVERS_APP.focusRiver('${r.id}')"><i class="fa-solid fa-route"></i> ম্যাপে গতিপথ দেখুন</button>
       </div>
     `;
 
     riverModal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
   }
 
   function closeRiverModal() {
-    if (!riverModal) return;
-    riverModal.classList.add('hidden');
-    document.body.style.overflow = '';
+    if (riverModal) riverModal.classList.add('hidden');
   }
 
   // Render BCS Q&A Accordion
   function renderBCSQuestions() {
     if (!bcsAccordion) return;
     bcsAccordion.innerHTML = '';
-    const fragment = document.createDocumentFragment();
 
-    bcsQuestions.forEach((q, idx) => {
-      const bcsItem = document.createElement('div');
-      bcsItem.className = 'bcs-item';
-
-      bcsItem.innerHTML = `
+    bcsQuestions.forEach((item, idx) => {
+      const el = document.createElement('div');
+      el.className = 'bcs-item';
+      el.innerHTML = `
         <div class="bcs-header">
-          <div class="bcs-title">
-            <span class="bcs-q-num">Q${idx + 1}</span>
-            <span>${q.question || q.question_bn}</span>
+          <div style="display:flex; align-items:center;">
+            <span class="bcs-cat-badge">${item.category || 'নদী তথ্যাবলী'}</span>
+            <span class="bcs-q-text">${idx + 1}. ${item.question}</span>
           </div>
-          <i class="fa-solid fa-chevron-down bcs-chevron"></i>
+          <i class="fa-solid fa-chevron-down bcs-arrow"></i>
         </div>
         <div class="bcs-body">
-          <div class="bcs-ans">
-            <strong>উত্তর:</strong> ${q.answer || q.answer_bn}
-          </div>
-          <div class="bcs-exp">
-            <strong>ব্যাখ্যা:</strong> ${q.explanation || q.explanation_bn}
-          </div>
+          <div class="bcs-answer-box"><i class="fa-solid fa-circle-check"></i> ${item.answer}</div>
+          <div class="bcs-explanation">${item.explanation || ''}</div>
         </div>
       `;
 
-      const header = bcsItem.querySelector('.bcs-header');
-      const body = bcsItem.querySelector('.bcs-body');
-      const chevron = bcsItem.querySelector('.bcs-chevron');
-
-      header.addEventListener('click', () => {
-        const isOpen = body.classList.contains('open');
-        body.classList.toggle('open', !isOpen);
-        chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+      el.querySelector('.bcs-header').addEventListener('click', () => {
+        const body = el.querySelector('.bcs-body');
+        const arrow = el.querySelector('.bcs-arrow');
+        const isOpen = body.classList.toggle('open');
+        arrow.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
       });
 
-      fragment.appendChild(bcsItem);
+      bcsAccordion.appendChild(el);
     });
-
-    bcsAccordion.appendChild(fragment);
   }
 
-  // Fallback Copy Function
   function copyTextFallback(text) {
-    let copied = false;
-    try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+    } else {
       const ta = document.createElement('textarea');
       ta.value = text;
       ta.style.position = 'fixed';
       ta.style.opacity = '0';
       document.body.appendChild(ta);
-      ta.focus();
       ta.select();
-      copied = document.execCommand('copy');
+      document.execCommand('copy');
       document.body.removeChild(ta);
-    } catch (e) {}
-
-    if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).catch(() => {});
     }
   }
 
-  // Toast Notification
   let toastTimeout;
   function showToast(msg) {
     if (!toast || !toastMessage) return;
@@ -1460,19 +1242,23 @@
     }, 2800);
   }
 
-  // Expose global helpers
+  // Global APIs
   window.BD_RIVERS_APP = {
     allRivers: () => allRivers,
     search: (q) => {
       if (riverSearchInput) riverSearchInput.value = q;
       searchQuery = q.toLowerCase();
-      applyFilters();
+      applyFilters(false);
     },
     focusRiver: (id) => {
       closeRiverModal();
       const r = allRivers.find(x => x.id === id);
-      if (r) focusRiverOnMap(r);
+      if (r) {
+        selectRiverFromSuggestion(r);
+        document.getElementById('mapSection').scrollIntoView({ behavior: 'smooth' });
+      }
     },
+    closeModal: closeRiverModal,
     zoomToActiveRiver: zoomToActiveRiver,
     resetMapView: resetMapView
   };

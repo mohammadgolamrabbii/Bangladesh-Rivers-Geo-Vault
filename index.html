@@ -159,90 +159,15 @@
   <!-- Main Container -->
   <main class="container main-content">
 
-    <!-- Search & Filter Controls (Placed directly above the Satellite Map) -->
-    <section id="riversSection" class="section-card filter-card">
-      <div class="search-bar-row">
-        <div class="search-input-wrapper">
-          <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input type="text" id="riverSearchInput" class="search-input" placeholder="নদীর নাম লিখুন (যেমন: balu, তুরাগ, পদ্মা, হালদা, সুরমা, খোয়াই)..." autocomplete="off" spellcheck="false">
-          <button id="clearSearchBtn" class="clear-search-btn hidden" title="সার্চ মুছুন"><i class="fa-solid fa-xmark"></i></button>
-          <!-- Live Instant Autocomplete Dropdown -->
-          <div id="searchSuggestions" class="search-suggestions-dropdown hidden" role="listbox"></div>
-        </div>
-
-        <div class="search-quick-tags">
-          <span class="quick-tag-label"><i class="fa-solid fa-bolt"></i> জনপ্রিয় নদী:</span>
-          <button type="button" class="quick-tag-btn" data-query="balu">বালু (Balu)</button>
-          <button type="button" class="quick-tag-btn" data-query="পদ্মা">পদ্মা</button>
-          <button type="button" class="quick-tag-btn" data-query="মেঘনা">মেঘনা</button>
-          <button type="button" class="quick-tag-btn" data-query="যমুনা">যমুনা</button>
-          <button type="button" class="quick-tag-btn" data-query="তুরাগ">তুরাগ</button>
-          <button type="button" class="quick-tag-btn" data-query="শীতলক্ষ্যা">শীতলক্ষ্যা</button>
-          <button type="button" class="quick-tag-btn" data-query="কর্ণফুলী">কর্ণফুলী</button>
-          <button type="button" class="quick-tag-btn" data-query="হালদা">হালদা</button>
-          <button type="button" class="quick-tag-btn" data-query="তিস্তা">তিস্তা</button>
-          <button type="button" class="quick-tag-btn" data-query="সুরমা">সুরমা</button>
-          <button type="button" class="quick-tag-btn" data-query="খোয়াই">খোয়াই</button>
-        </div>
-
-        <div class="quick-filters-row">
-          <select id="filterBasin" class="filter-select">
-            <option value="all">সকল অববাহিকা (৬টি)</option>
-            <option value="পদ্মা-গঙ্গা অববাহিকা">পদ্মা-গঙ্গা অববাহিকা</option>
-            <option value="সুরমা-মেঘনা অববাহিকা">সুরমা-মেঘনা অববাহিকা</option>
-            <option value="ব্রহ্মপুত্র-যমুনা অববাহিকা">ব্রহ্মপুত্র-যমুনা অববাহিকা</option>
-            <option value="তিস্তা ও উত্তরাঞ্চলীয় অববাহিকা">তিস্তা ও উত্তরাঞ্চলীয় অববাহিকা</option>
-            <option value="কর্ণফুলী ও দক্ষিণ-পূর্ব পার্বত্য অববাহিকা">কর্ণফুলী ও পার্বত্য অববাহিকা</option>
-            <option value="উপকূলীয় ও সুন্দরবন অববাহিকা">উপকূলীয় ও সুন্দরবন অববাহিকা</option>
-          </select>
-
-          <select id="filterDivision" class="filter-select">
-            <option value="all">সকল বিভাগ (৮টি)</option>
-            <option value="ঢাকা">ঢাকা বিভাগ</option>
-            <option value="চট্টগ্রাম">চট্টগ্রাম বিভাগ</option>
-            <option value="রাজশাহী">রাজশাহী বিভাগ</option>
-            <option value="খুলনা">খুলনা বিভাগ</option>
-            <option value="বরিশাল">বরিশাল বিভাগ</option>
-            <option value="সিলেট">সিলেট বিভাগ</option>
-            <option value="রংপুর">রংপুর বিভাগ</option>
-            <option value="ময়মনসিংহ">ময়মনসিংহ বিভাগ</option>
-          </select>
-
-          <select id="filterTransboundary" class="filter-select">
-            <option value="all">সকল নদী (অভিন্ন ও অভ্যন্তরীণ)</option>
-            <option value="yes">আন্তর্জাতিক / অভিন্ন নদী (Transboundary)</option>
-            <option value="no">অভ্যন্তরীণ নদী (Indigenous)</option>
-          </select>
-
-          <select id="filterStatus" class="filter-select">
-            <option value="all">সকল বর্তমান অবস্থা</option>
-            <option value="প্রবাহিত ও সক্রিয়">প্রবাহিত ও সক্রিয়</option>
-            <option value="নাব্যতাহীন ও ভরাট">নাব্যতাহীন ও ভরাট</option>
-            <option value="দখল ও দূষণে বিপন্ন">দখল ও দূষণে বিপন্ন</option>
-            <option value="মৌসুমি">মৌসুমি নদী</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Result Count & Quick Badges -->
-      <div class="filter-status-bar">
-        <span class="count-text" id="riverCountText">প্রদর্শিত হচ্ছে: <strong>১,৩১৫</strong> টি নদ-নদী</span>
-        <div class="quick-pill-filters">
-          <button class="quick-filter-chip" data-filter="transboundary"><i class="fa-solid fa-flag"></i> অভিন্ন নদী (৫৭)</button>
-          <button class="quick-filter-chip" data-filter="endangered"><i class="fa-solid fa-biohazard"></i> বিপন্ন ও দূষিত</button>
-          <button class="quick-filter-chip" data-filter="top10"><i class="fa-solid fa-arrow-up-wide-short"></i> শীর্ষ দীর্ঘ নদী</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Interactive Satellite Map Section -->
+    <!-- Interactive Satellite Map & Unified River Search Section -->
     <section id="mapSection" class="section-card map-card">
+      <div id="riversSection"></div>
       <div class="card-header">
         <div class="card-title-group">
           <span class="card-icon"><i class="fa-solid fa-satellite-dish"></i></span>
           <div>
             <h3 class="card-title">ইন্টারেক্টিভ নদী প্রবাহ ও মোহনা স্যাটেলাইট ভিউ (গুগল ম্যাপস ও ওএসএম ইঞ্জিন)</h3>
-            <p class="card-desc">আসল গ্রাউন্ড-ট্রুথ ওপেনস্ট্রিটম্যাপ ও গুগল ম্যাপস ভেক্টর ডেটা — নদীপথ হুবহু স্যাটেলাইট ওয়াটারবডির আসল খাতের ওপর বাস্তবসম্মতভাবে প্রদর্শিত হয়।</p>
+            <p class="card-desc">আসল গ্রাউন্ড-ট্রুথ ওপেনস্ট্রিটম্যাপ ও গুগল ম্যাপস ভেক্টর ডেটা — ১,৩১৫টি নদীর উৎপত্তি থেকে মোহনা পর্যন্ত লাইভ গতিপথ।</p>
           </div>
         </div>
 
@@ -262,20 +187,86 @@
         </div>
       </div>
 
+      <!-- Unified GIS Search & Filter Command Bar -->
+      <div class="unified-search-hub">
+        <div class="search-bar-row">
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="riverSearchInput" class="search-input" placeholder="নদীর নাম লিখুন (যেমন: balu, তুরাগ, পদ্মা, হালদা, সুরমা, খোয়াই)..." autocomplete="off" spellcheck="false">
+            <button id="clearSearchBtn" class="clear-search-btn hidden" title="সার্চ মুছুন"><i class="fa-solid fa-xmark"></i></button>
+            <!-- Live Instant Autocomplete Dropdown -->
+            <div id="searchSuggestions" class="search-suggestions-dropdown hidden" role="listbox"></div>
+          </div>
+
+          <div class="search-quick-tags">
+            <span class="quick-tag-label"><i class="fa-solid fa-bolt"></i> জনপ্রিয় নদী:</span>
+            <button type="button" class="quick-tag-btn" data-query="balu">বালু (Balu)</button>
+            <button type="button" class="quick-tag-btn" data-query="পদ্মা">পদ্মা</button>
+            <button type="button" class="quick-tag-btn" data-query="মেঘনা">মেঘনা</button>
+            <button type="button" class="quick-tag-btn" data-query="যমুনা">যমুনা</button>
+            <button type="button" class="quick-tag-btn" data-query="তুরাগ">তুরাগ</button>
+            <button type="button" class="quick-tag-btn" data-query="শীতলক্ষ্যা">শীতলক্ষ্যা</button>
+            <button type="button" class="quick-tag-btn" data-query="কর্ণফুলী">কর্ণফুলী</button>
+            <button type="button" class="quick-tag-btn" data-query="হালদা">হালদা</button>
+            <button type="button" class="quick-tag-btn" data-query="তিস্তা">তিস্তা</button>
+            <button type="button" class="quick-tag-btn" data-query="সুরমা">সুরমা</button>
+            <button type="button" class="quick-tag-btn" data-query="খোয়াই">খোয়াই</button>
+          </div>
+
+          <div class="quick-filters-row">
+            <select id="filterBasin" class="filter-select">
+              <option value="all">সকল অববাহিকা (৬টি)</option>
+              <option value="পদ্মা-গঙ্গা অববাহিকা">পদ্মা-গঙ্গা অববাহিকা</option>
+              <option value="সুরমা-মেঘনা অববাহিকা">সুরমা-মেঘনা অববাহিকা</option>
+              <option value="ব্রহ্মপুত্র-যমুনা অববাহিকা">ব্রহ্মপুত্র-যমুনা অববাহিকা</option>
+              <option value="তিস্তা ও উত্তরাঞ্চলীয় অববাহিকা">তিস্তা ও উত্তরাঞ্চলীয় অববাহিকা</option>
+              <option value="কর্ণফুলী ও দক্ষিণ-পূর্ব পার্বত্য অববাহিকা">কর্ণফুলী ও পার্বত্য অববাহিকা</option>
+              <option value="উপকূলীয় ও সুন্দরবন অববাহিকা">উপকূলীয় ও সুন্দরবন অববাহিকা</option>
+            </select>
+
+            <select id="filterDivision" class="filter-select">
+              <option value="all">সকল বিভাগ (৮টি)</option>
+              <option value="ঢাকা">ঢাকা বিভাগ</option>
+              <option value="চট্টগ্রাম">চট্টগ্রাম বিভাগ</option>
+              <option value="রাজশাহী">রাজশাহী বিভাগ</option>
+              <option value="খুলনা">খুলনা বিভাগ</option>
+              <option value="বরিশাল">বরিশাল বিভাগ</option>
+              <option value="সিলেট">সিলেট বিভাগ</option>
+              <option value="রংপুর">রংপুর বিভাগ</option>
+              <option value="ময়মনসিংহ">ময়মনসিংহ বিভাগ</option>
+            </select>
+
+            <select id="filterTransboundary" class="filter-select">
+              <option value="all">সকল নদী (অভিন্ন ও অভ্যন্তরীণ)</option>
+              <option value="yes">আন্তর্জাতিক / অভিন্ন নদী (Transboundary)</option>
+              <option value="no">অভ্যন্তরীণ নদী (Indigenous)</option>
+            </select>
+
+            <select id="filterStatus" class="filter-select">
+              <option value="all">সকল বর্তমান অবস্থা</option>
+              <option value="প্রবাহিত ও সক্রিয়">প্রবাহিত ও সক্রিয়</option>
+              <option value="নাব্যতাহীন ও ভরাট">নাব্যতাহীন ও ভরাট</option>
+              <option value="দখল ও দূষণে বিপন্ন">দখল ও দূষণে বিপন্ন</option>
+              <option value="মৌসুমি">মৌসুমি নদী</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Result Count & Quick Badges -->
+        <div class="filter-status-bar">
+          <span class="count-text" id="riverCountText">প্রদর্শিত হচ্ছে: <strong>১,৩১৫</strong> টি নদ-নদী</span>
+          <div class="quick-pill-filters">
+            <button class="quick-filter-chip" data-filter="transboundary"><i class="fa-solid fa-flag"></i> অভিন্ন নদী (৫৭)</button>
+            <button class="quick-filter-chip" data-filter="endangered"><i class="fa-solid fa-biohazard"></i> বিপন্ন ও দূষিত</button>
+            <button class="quick-filter-chip" data-filter="top10"><i class="fa-solid fa-arrow-up-wide-short"></i> শীর্ষ দীর্ঘ নদী</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Map Container -->
       <div id="activeFlowBanner" class="active-flow-banner hidden"></div>
       <div class="map-wrapper" id="mapWrapper">
         <div id="riverMap" class="leaflet-map-box"></div>
-
-        <!-- Google Maps-style Floating Search HUD -->
-        <div class="map-floating-hud" id="mapFloatingHud">
-          <div class="floating-search-bar">
-            <i class="fa-solid fa-magnifying-glass search-hud-icon"></i>
-            <input type="text" id="mapFloatingSearchInput" class="floating-search-input" placeholder="ম্যাপে নদী খুঁজুন (যেমন: balu, পদ্মা, তুরাগ)..." autocomplete="off" spellcheck="false">
-            <button id="clearFloatingSearchBtn" class="clear-floating-btn hidden" title="সার্চ মুছুন"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-          <div id="floatingSearchSuggestions" class="floating-suggestions-dropdown hidden" role="listbox"></div>
-        </div>
 
         <!-- Google Maps-style Floating Action Buttons (FABs) -->
         <div class="map-floating-controls">
@@ -320,6 +311,13 @@
             <button id="floatingCardDetailsBtn" class="hud-action-btn secondary"><i class="fa-solid fa-circle-info"></i> বিস্তারিত বিবরণ</button>
           </div>
         </div>
+
+        <div class="map-overlay-info" id="mapOverlayInfo">
+          <span class="pulse-indicator"></span>
+          <span id="selectedRiverText">যেকোনো নদী নির্বাচন করুন</span>
+        </div>
+      </div>
+    </section>
 
         <div class="map-overlay-info" id="mapOverlayInfo">
           <span class="pulse-indicator"></span>
