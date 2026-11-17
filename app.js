@@ -586,17 +586,42 @@
       });
     }
 
-    // Quick Search Tags & Floating Chips
+    // Quick Search Tags & Floating Chips (Strict Master River Priority)
     document.querySelectorAll('.quick-chip-btn, .quick-tag-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const q = btn.getAttribute('data-query');
         if (riverSearchInput) riverSearchInput.value = q;
-        const match = allRivers.find(r => 
-          (r.name_bn || '').toLowerCase().includes(q.toLowerCase()) || 
-          (r.name_en || '').toLowerCase().includes(q.toLowerCase())
-        );
-        if (match) {
-          selectRiverFromSuggestion(match);
+
+        let bestMatch = null;
+        let bestScore = -1;
+        const qLow = q.toLowerCase();
+
+        allRivers.forEach(r => {
+          const nameEn = (r.name_en || '').toLowerCase();
+          const nameBn = (r.name_bn || '').toLowerCase();
+          let score = 0;
+          const isPadmaMaster = (qLow === 'পদ্মা' || qLow === 'padma') && r.id === 'BD-RIV-001';
+          if (nameBn === qLow || nameEn === qLow || nameBn === qLow + ' নদী' || nameEn === qLow + ' river' || isPadmaMaster) {
+            score = 10000;
+          } else if (nameBn.startsWith(qLow) || nameEn.startsWith(qLow)) {
+            score = 5000;
+          } else if (nameBn.includes(qLow) || nameEn.includes(qLow)) {
+            score = 2000;
+          }
+          if (score > 0) {
+            if (r.id.startsWith('BD-RIV-00') || (r.length_km >= 100 && !r.name_bn.includes('অংশ') && !r.name_bn.includes('শাখা') && !r.name_bn.includes('মরা'))) {
+              score += 20000;
+            }
+            score += Math.min(r.length_km || 0, 1000);
+            if (score > bestScore) {
+              bestScore = score;
+              bestMatch = r;
+            }
+          }
+        });
+
+        if (bestMatch) {
+          selectRiverFromSuggestion(bestMatch);
         } else {
           searchQuery = q.toLowerCase();
           applyFilters(false);
@@ -744,7 +769,8 @@
       const nameEn = (r.name_en || '').toLowerCase();
       const nameBn = (r.name_bn || '').toLowerCase();
       let score = 0;
-      if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী') {
+      const isPadmaMaster = (q === 'পদ্মা' || q === 'padma') && r.id === 'BD-RIV-001';
+      if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী' || isPadmaMaster) {
         score = 10000;
       } else if (nameEn.startsWith(q) || nameBn.startsWith(q)) {
         score = 5000;
@@ -754,7 +780,14 @@
         const districts = (r.districts || []).join(' ').toLowerCase();
         if (districts.includes(q)) score = 500;
       }
-      if (score > 0) matches.push({ river: r, score });
+      if (score > 0) {
+        // Master River Priority Bonus (+20000)
+        if (r.id.startsWith('BD-RIV-00') || (r.length_km >= 100 && !r.name_bn.includes('অংশ') && !r.name_bn.includes('শাখা') && !r.name_bn.includes('মরা'))) {
+          score += 20000;
+        }
+        score += Math.min(r.length_km || 0, 1000);
+        matches.push({ river: r, score });
+      }
     });
 
     matches.sort((a, b) => b.score - a.score);
@@ -980,7 +1013,8 @@
         const cleanEn = cleanTransliteration(nameEn);
         const cleanQ = cleanTransliteration(q);
 
-        if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী') {
+        const isPadmaMaster = (q === 'পদ্মা' || q === 'padma') && r.id === 'BD-RIV-001';
+        if (nameEn === q || nameBn === q || nameEn === q + ' river' || nameBn === q + ' নদী' || isPadmaMaster) {
           score = 10000;
         } else if (nameEn.startsWith(q) || nameBn.startsWith(q)) {
           score = 5000;
@@ -1020,6 +1054,11 @@
         }
 
         if (score > 0) {
+          // Master River Priority Bonus (+20000)
+          if (r.id.startsWith('BD-RIV-00') || (r.length_km >= 100 && !r.name_bn.includes('অংশ') && !r.name_bn.includes('শাখা') && !r.name_bn.includes('মরা'))) {
+            score += 20000;
+          }
+          score += Math.min(r.length_km || 0, 1000);
           scoredResults.push({ river: r, score });
         }
       } else {
