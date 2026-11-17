@@ -567,20 +567,52 @@
       });
     }
 
-    // Quick Search Tags
-    document.querySelectorAll('.quick-tag-btn').forEach(btn => {
+    // Floating Filter Drawer Toggle
+    const toggleFilterBtn = document.getElementById('toggleFilterBtn');
+    const floatingFilterDrawer = document.getElementById('floatingFilterDrawer');
+    const closeFilterDrawerBtn = document.getElementById('closeFilterDrawerBtn');
+
+    if (toggleFilterBtn && floatingFilterDrawer) {
+      toggleFilterBtn.addEventListener('click', () => {
+        const isHidden = floatingFilterDrawer.classList.toggle('hidden');
+        toggleFilterBtn.classList.toggle('active', !isHidden);
+      });
+    }
+
+    if (closeFilterDrawerBtn && floatingFilterDrawer) {
+      closeFilterDrawerBtn.addEventListener('click', () => {
+        floatingFilterDrawer.classList.add('hidden');
+        if (toggleFilterBtn) toggleFilterBtn.classList.remove('active');
+      });
+    }
+
+    // Quick Search Tags & Floating Chips
+    document.querySelectorAll('.quick-chip-btn, .quick-tag-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const q = btn.getAttribute('data-query');
+        if (riverSearchInput) riverSearchInput.value = q;
         const match = allRivers.find(r => 
-          (r.name_bn || '').includes(q) || 
+          (r.name_bn || '').toLowerCase().includes(q.toLowerCase()) || 
           (r.name_en || '').toLowerCase().includes(q.toLowerCase())
         );
         if (match) {
           selectRiverFromSuggestion(match);
         } else {
-          if (riverSearchInput) riverSearchInput.value = q;
           searchQuery = q.toLowerCase();
           applyFilters(false);
+        }
+      });
+    });
+
+    // FAQ Accordion Toggle
+    document.querySelectorAll('.faq-question').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.closest('.faq-item');
+        if (!item) return;
+        const wasActive = item.classList.contains('active');
+        document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('active'));
+        if (!wasActive) {
+          item.classList.add('active');
         }
       });
     });
